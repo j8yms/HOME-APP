@@ -1,0 +1,9 @@
+# Gradle / IDE
+.idea/
+.gradle/
+.DS_Store
+.vscode/
+
+# Keystore and credentials
+keystore.jks
+keystore.properties

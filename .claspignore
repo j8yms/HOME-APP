@@ -1,0 +1,10 @@
+node_modules/
+**/*.iml
+*.log
+*.tmp
+.gradle/
+build/
+**/build/
+.idea/
+*.swp
+.DS_Store
