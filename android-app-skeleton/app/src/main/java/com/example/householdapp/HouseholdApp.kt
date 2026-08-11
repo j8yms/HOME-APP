@@ -4,12 +4,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.EventNote
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Rule
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -62,7 +67,12 @@ fun HouseholdApp() {
         NavItem(AppRoute.Rewards, Icons.Filled.CardGiftcard),
         NavItem(AppRoute.Money, Icons.Filled.MonetizationOn),
         NavItem(AppRoute.ActivityFeed, Icons.Filled.History),
-        NavItem(AppRoute.Profile, Icons.Filled.Person)
+        NavItem(AppRoute.Profile, Icons.Filled.Person),
+        NavItem(AppRoute.Analytics, Icons.Filled.PieChart),
+        NavItem(AppRoute.Ledger, Icons.Filled.ReceiptLong),
+        NavItem(AppRoute.Budgets, Icons.Filled.DateRange),
+        NavItem(AppRoute.Subscriptions, Icons.Filled.EventNote),
+        NavItem(AppRoute.Transfers, Icons.Filled.SwapHoriz)
     )
 
     val showBottomBar = currentRoute != AppRoute.Auth.route

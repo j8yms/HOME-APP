@@ -1,6 +1,7 @@
 package com.example.householdapp.core.network
 
 import com.example.householdapp.core.model.Bill
+import com.example.householdapp.core.model.Budget
 import com.example.householdapp.core.model.CouplesStreak
 import com.example.householdapp.core.model.FinanceSummary
 import com.example.householdapp.core.model.HouseholdLogEntry
@@ -10,7 +11,9 @@ import com.example.householdapp.core.model.Redemption
 import com.example.householdapp.core.model.ReferenceEntry
 import com.example.householdapp.core.model.RewardItem
 import com.example.householdapp.core.model.ShoppingItem
+import com.example.householdapp.core.model.SubscriptionInfo
 import com.example.householdapp.core.model.Task
+import com.example.householdapp.core.model.TransferConfirmation
 import com.example.householdapp.core.model.UserProfile
 import com.example.householdapp.core.model.WorkoutEntry
 
@@ -303,6 +306,102 @@ data class UpdateShoppingItemRequest(
 
 data class UpdateShoppingItemResponse(
     val item: ShoppingItem
+)
+
+data class ExecuteTransferRequest(
+    val route: String = "transfers/execute",
+    val sourceAccount: String,
+    val destinationTarget: String,
+    val amount: Double,
+    val direction: String = "out",
+    val userId: String
+)
+
+data class ExecuteTransferResponse(
+    val transfer: TransferConfirmation
+)
+
+data class TransferRecord(
+    val transferId: String,
+    val sourceAccount: String,
+    val destinationTarget: String,
+    val amount: Double,
+    val direction: String,
+    val timestamp: String
+)
+
+data class TransfersResponse(
+    val transfers: List<TransferRecord> = emptyList()
+)
+
+data class AnalyticsCategory(
+    val category: String,
+    val expenditurePct: Double,
+    val totalSpent: Double,
+    val categoryType: String = "",
+    val color: String = ""
+)
+
+data class AnalyticsMemberBreakdown(
+    val userId: String,
+    val displayName: String = "",
+    val totalSpent: Double = 0.0
+)
+
+data class AnalyticsOverview(
+    val combinedTotal: Double = 0.0,
+    val individualBreakdowns: List<AnalyticsMemberBreakdown> = emptyList()
+)
+
+data class AnalyticsResponse(
+    val userId: String = "",
+    val householdId: String = "",
+    val categories: List<AnalyticsCategory> = emptyList(),
+    val overview: AnalyticsOverview? = null
+)
+
+data class BudgetsResponse(
+    val budgets: List<Budget> = emptyList()
+)
+
+data class CreateBudgetRequest(
+    val route: String = "budgets/create",
+    val userId: String,
+    val category: String,
+    val month: String,
+    val budgetLimit: Double
+)
+
+data class CreateBudgetResponse(
+    val budget: Budget
+)
+
+data class SubscriptionsResponse(
+    val subscriptions: List<SubscriptionInfo> = emptyList()
+)
+
+data class CreateSubscriptionRequest(
+    val route: String = "subscriptions/create",
+    val userId: String,
+    val serviceName: String,
+    val nextRenewalDate: String,
+    val billingInterval: String = "",
+    val terminationRule: String = ""
+)
+
+data class CreateSubscriptionResponse(
+    val subscription: SubscriptionInfo
+)
+
+data class UpdateSubscriptionRequest(
+    val route: String = "subscriptions/update",
+    val subscriptionId: String,
+    val nextRenewalDate: String? = null,
+    val isActive: Boolean? = null
+)
+
+data class UpdateSubscriptionResponse(
+    val subscription: SubscriptionInfo
 )
 
 data class ReferenceEntriesResponse(

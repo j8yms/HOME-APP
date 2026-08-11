@@ -1,0 +1,34 @@
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+
+> Task :app:compileDebugKotlin
+w: file:///D:/VIBE%20CODING/home%20app/android-app-skeleton/app/src/main/java/com/example/householdapp/HouseholdApp.kt:65:46 '@property:Deprecated(...) val Icons.Filled.Rule: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Rule.
+w: file:///D:/VIBE%20CODING/home%20app/android-app-skeleton/app/src/main/java/com/example/householdapp/HouseholdApp.kt:72:47 '@property:Deprecated(...) val Icons.Filled.ReceiptLong: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ReceiptLong.
+w: file:///D:/VIBE%20CODING/home%20app/android-app-skeleton/app/src/main/java/com/example/householdapp/HouseholdApp.kt:74:54 '@property:Deprecated(...) val Icons.Filled.EventNote: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.EventNote.
+w: file:///D:/VIBE%20CODING/home%20app/android-app-skeleton/app/src/main/java/com/example/householdapp/finance/FinanceScreen.kt:177:55 '@property:Deprecated(...) val Icons.Filled.EventNote: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.EventNote.
+w: file:///D:/VIBE%20CODING/home%20app/android-app-skeleton/app/src/main/java/com/example/householdapp/finance/FinanceScreens.kt:288:41 '@property:Deprecated(...) val Icons.Filled.ReceiptLong: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ReceiptLong.
+w: file:///D:/VIBE%20CODING/home%20app/android-app-skeleton/app/src/main/java/com/example/householdapp/tasks/TasksScreen.kt:242:41 '@property:Deprecated(...) val Icons.Filled.Rule: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Rule.
+w: file:///D:/VIBE%20CODING/home%20app/android-app-skeleton/app/src/main/java/com/example/householdapp/profile/ProfileScreen.kt:138:44 '@property:Deprecated(...) val Icons.Filled.TrendingUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.TrendingUp.
+w: file:///D:/VIBE%20CODING/home%20app/android-app-skeleton/app/src/main/java/com/example/householdapp/profile/ProfileScreen.kt:234:51 '@property:Deprecated(...) val Icons.Filled.Logout: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Logout.
+w: file:///D:/VIBE%20CODING/home%20app/android-app-skeleton/app/src/main/java/com/example/householdapp/profile/ProfileScreen.kt:405:43 '@property:Deprecated(...) val Icons.Filled.KeyboardArrowRight: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.KeyboardArrowRight.
+w: file:///D:/VIBE%20CODING/home%20app/android-app-skeleton/app/src/main/java/com/example/householdapp/profile/ProfileScreen.kt:548:43 '@property:Deprecated(...) val Icons.Filled.KeyboardArrowRight: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.KeyboardArrowRight.
+w: file:///D:/VIBE%20CODING/home%20app/android-app-skeleton/app/src/main/java/com/example/householdapp/workouts/WorkoutsScreen.kt:59:42 '@property:Deprecated(...) val Icons.Filled.DirectionsRun: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.DirectionsRun.
+w: file:///D:/VIBE%20CODING/home%20app/android-app-skeleton/app/src/main/java/com/example/householdapp/workouts/WorkoutsScreen.kt:61:42 '@property:Deprecated(...) val Icons.Filled.DirectionsBike: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.DirectionsBike.
+
+BUILD SUCCESSFUL in 23s
+15 actionable tasks: 1 executed, 14 up-to-date

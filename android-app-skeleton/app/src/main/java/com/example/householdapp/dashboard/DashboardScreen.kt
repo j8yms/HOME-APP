@@ -423,11 +423,11 @@ fun DashboardPreview() {
                         longestStreak = 5
                     ),
                     tasksDueToday = listOf(
-                        Task("t1", "Wash dishes", "", "General", "u1", "u1", "pending", "medium", "2024-07-20", 50, 10, true, 1),
-                        Task("t2", "Take out the trash", "", "Cleaning", "u2", "u1", "pending", "high", "2024-07-20", 80, 15, true, 1)
+                        Task("t1", "Wash dishes", "", "General", "u1", "u1", "pending", "medium", "2024-07-20", null, 50, 10, true, 1),
+                        Task("t2", "Take out the trash", "", "Cleaning", "u2", "u1", "pending", "high", "2024-07-20", null, 80, 15, true, 1)
                     ),
                     overdueTasks = listOf(
-                        Task("t3", "Fix kitchen faucet", "", "Maintenance", "u1", "u2", "pending", "high", "2024-07-18", 80, 15, true, 1)
+                        Task("t3", "Fix kitchen faucet", "", "Maintenance", "u1", "u2", "pending", "high", "2024-07-18", null, 80, 15, true, 1)
                     )
                 )
             ),

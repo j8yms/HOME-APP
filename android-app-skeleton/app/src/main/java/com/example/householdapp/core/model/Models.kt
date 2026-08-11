@@ -12,24 +12,26 @@ data class UserProfile(
     val longestStreak: Int,
     val photoUrl: String = "",
     val lastQualifyingDate: String = "",
-    val householdSide: String = ""
+    val householdSide: String = "",
+    val householdId: String = "",
+    val personalIdentity: String = ""
 )
 
 data class Task(
     val taskId: String,
     val title: String,
-    val description: String,
+    val description: String?,
     val category: String,
     val assignedToUserId: String,
     val createdByUserId: String,
     val status: String,
     val priority: String,
-    val dueDate: String,
+    val dueDate: String?,
+    val repeatRule: String?,
     val xpReward: Int,
     val coinReward: Int,
     val streakEligible: Boolean,
     val version: Int,
-    val repeatRule: String = "",
     val completedAt: String = "",
     val completedByUserId: String = "",
     val createdAt: String = "",
@@ -93,13 +95,19 @@ data class LedgerEntry(
     val coinDelta: Int = 0,
     val reason: String = "",
     val userId: String = "",
-    val createdAt: String = ""
+    val createdAt: String = "",
+    val amount: Double = 0.0,
+    val direction: String = "out",
+    val category: String = "",
+    val sourceId: String = "",
+    val description: String = "",
+    val timestamp: String = ""
 )
 
 data class Redemption(
     val redemptionId: String,
     val rewardId: String = "",
-    val rewardTitle: String,
+    val rewardTitle: String = "",
     val costCoins: Int,
     val costXp: Int,
     val status: String = "redeemed",
@@ -172,4 +180,69 @@ data class ReferenceEntry(
     val createdByUserId: String = "",
     val updatedAt: String = "",
     val createdAt: String = ""
+)
+
+data class AnalyticsChartData(
+    val category: String,
+    val expenditurePct: Double,
+    val totalSpent: Double,
+    val categoryType: String,
+    val color: String,
+    val isActive: Boolean = true
+)
+
+data class CategoryInsight(
+    val category: String,
+    val totalSpent: Double,
+    val transactionCount: Int,
+    val color: String
+)
+
+data class TransferTarget(
+    val accountType: String,
+    val accountName: String,
+    val accountId: String,
+    val balance: Double,
+    val isJoint: Boolean = false
+)
+
+data class TransferRoute(
+    val sourceAccount: String,
+    val destinationTarget: String,
+    val amount: Double,
+    val direction: String,
+    val balanceCheck: Boolean = false
+)
+
+data class TransferConfirmation(
+    val sourceAccount: String,
+    val destinationTarget: String,
+    val amount: Double,
+    val direction: String,
+    val sourceBalance: Double,
+    val destinationBalance: Double,
+    val timestamp: String
+)
+
+data class SubscriptionInfo(
+    val subscriptionId: String,
+    val userId: String = "",
+    val serviceName: String,
+    val nextRenewalDate: String,
+    val billingInterval: String,
+    val terminationRule: String,
+    val isActive: Boolean,
+    val createdAt: String,
+    val updatedAt: String
+)
+
+data class Budget(
+    val budgetId: String,
+    val userId: String = "",
+    val category: String,
+    val month: String,
+    val currentSpent: Double = 0.0,
+    val budgetLimit: Double = 0.0,
+    val progressPct: Int = 0,
+    val status: String = "active"
 )

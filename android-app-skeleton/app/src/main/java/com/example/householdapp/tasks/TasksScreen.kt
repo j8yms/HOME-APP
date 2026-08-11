@@ -154,11 +154,11 @@ fun TasksContent(
 
     fun prefillForEdit(task: Task) {
         title = task.title
-        description = task.description
+        description = task.description.orEmpty()
         category = task.category.ifBlank { "General" }
-        dueDate = task.dueDate
+        dueDate = task.dueDate.orEmpty()
         priority = task.priority
-        repeatRule = task.repeatRule
+        repeatRule = task.repeatRule.orEmpty()
         streakEligible = task.streakEligible
         assigneeLabel = task.assigneeLabel.takeIf { it == "his" || it == "hers" || it == "shared" } ?: "shared"
     }
@@ -173,7 +173,7 @@ fun TasksContent(
 
     val visibleTasks = when (filter) {
         TaskFilter.All -> uiState.tasks
-        TaskFilter.Routines -> uiState.tasks.filter { it.repeatRule.isNotBlank() && it.repeatRule != "none" }
+        TaskFilter.Routines -> uiState.tasks.filter { !it.repeatRule.isNullOrBlank() && it.repeatRule != "none" }
         TaskFilter.Todo -> uiState.tasks.filter { it.status != "completed" }
         TaskFilter.Shopping -> uiState.tasks.filter { it.category.equals("shopping", ignoreCase = true) }
         TaskFilter.DateIdeas -> uiState.tasks.filter { it.category.equals("date ideas", ignoreCase = true) || it.category.equals("date", ignoreCase = true) }

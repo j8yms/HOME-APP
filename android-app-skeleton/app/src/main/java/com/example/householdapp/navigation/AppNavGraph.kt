@@ -10,7 +10,12 @@ import androidx.navigation.navArgument
 import com.example.householdapp.activity.ActivityFeedScreen
 import com.example.householdapp.auth.AuthScreen
 import com.example.householdapp.dashboard.DashboardScreen
+import com.example.householdapp.finance.AnalyticsScreen
+import com.example.householdapp.finance.BudgetsScreen
 import com.example.householdapp.finance.FinanceScreen
+import com.example.householdapp.finance.LedgerScreen
+import com.example.householdapp.finance.SubscriptionsScreen
+import com.example.householdapp.finance.TransfersScreen
 import com.example.householdapp.householdlog.HouseholdLogScreen
 import com.example.householdapp.profile.ProfileScreen
 import com.example.householdapp.reference.ReferenceScreen
@@ -25,6 +30,11 @@ sealed class AppRoute(val route: String, val label: String) {
     data object Workouts : AppRoute("workouts", "Workouts")
     data object Rewards : AppRoute("rewards", "Rewards")
     data object Money : AppRoute("money", "Money")
+    data object Analytics : AppRoute("analytics", "Analytics")
+    data object Ledger : AppRoute("ledger", "Ledger")
+    data object Budgets : AppRoute("budgets", "Budgets")
+    data object Subscriptions : AppRoute("subscriptions", "Subscriptions")
+    data object Transfers : AppRoute("transfers", "Transfers")
     data object HouseholdLog : AppRoute("household_log", "Log")
     data object ActivityFeed : AppRoute("activity_feed", "Activity")
     data object Profile : AppRoute("profile", "Profile")
@@ -61,6 +71,11 @@ fun AppNavGraph(
         composable(AppRoute.Workouts.route) { WorkoutsScreen() }
         composable(AppRoute.Rewards.route) { RewardsScreen() }
         composable(AppRoute.Money.route) { FinanceScreen() }
+        composable(AppRoute.Analytics.route) { AnalyticsScreen() }
+        composable(AppRoute.Ledger.route) { LedgerScreen() }
+        composable(AppRoute.Budgets.route) { BudgetsScreen() }
+        composable(AppRoute.Subscriptions.route) { SubscriptionsScreen() }
+        composable(AppRoute.Transfers.route) { TransfersScreen() }
         composable(AppRoute.HouseholdLog.route) { HouseholdLogScreen() }
         composable(AppRoute.ActivityFeed.route) { ActivityFeedScreen() }
         composable(AppRoute.Profile.route) {

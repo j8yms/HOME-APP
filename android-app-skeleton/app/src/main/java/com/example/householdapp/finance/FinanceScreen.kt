@@ -66,7 +66,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.householdapp.core.model.Bill
-import com.example.householdapp.core.model.CurrencyCatalog
 import com.example.householdapp.core.model.MoneyTransaction
 import com.example.householdapp.core.model.ShoppingItem
 import com.example.householdapp.core.model.WalletBreakdown

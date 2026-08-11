@@ -3,6 +3,10 @@ package com.example.householdapp.finance
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.householdapp.core.model.FinanceSummary
+import com.example.householdapp.core.model.LedgerEntry
+import com.example.householdapp.core.model.TransferConfirmation
+import com.example.householdapp.core.model.TransferRoute
+import com.example.householdapp.core.model.TransferTarget
 import com.example.householdapp.core.repository.FinanceRepository
 import com.example.householdapp.core.session.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +20,15 @@ data class FinanceUiState(
     val isSubmitting: Boolean = false,
     val summary: FinanceSummary = FinanceSummary(),
     val errorMessage: String? = null,
-    val successMessage: String? = null
+    val successMessage: String? = null,
+    val sourceAccount: String = "",
+    val destinationTarget: String = "",
+    val transferAmount: Double = 0.0,
+    val transferDirection: String = "out",
+    val sourceBalance: Double = 0.0,
+    val destinationBalance: Double = 0.0,
+    val isTransferPending: Boolean = false,
+    val transferValidationError: String? = null
 )
 
 class FinanceViewModel : ViewModel() {
@@ -226,5 +238,100 @@ class FinanceViewModel : ViewModel() {
 
     fun clearMessage() {
         _uiState.update { it.copy(errorMessage = null, successMessage = null) }
+    }
+
+    // ---- Transfer functionality ----
+
+    fun initiateTransfer(sourceAccount: String, destinationTarget: String, amount: Double, onSuccess: (TransferConfirmation) -> Unit, onError: (String) -> Unit) {
+        val userId = SessionManager.sessionState.value.user?.userId ?: return
+
+        if (amount <= 0) {
+            onError("Amount must be a positive number.")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isTransferPending = true, errorMessage = null, transferValidationError = null) }
+
+            val sourceBalance = getAccountBalance(sourceAccount, userId)
+            if (sourceBalance < amount) {
+                _uiState.update {
+                    it.copy(
+                        isTransferPending = false,
+                        transferValidationError = "Insufficient liquidity in source account: $sourceAccount. Available: $sourceBalance."
+                    )
+                }
+                onError("Insufficient liquidity. Available balance: $sourceBalance")
+                return@launch
+            }
+
+            val destBalance = getAccountBalance(destinationTarget, userId)
+
+            runCatching { repository.executeTransfer(sourceAccount, destinationTarget, amount, userId) }
+                .onSuccess { response ->
+                    _uiState.update {
+                        it.copy(
+                            isTransferPending = false,
+                            sourceBalance = sourceBalance - amount,
+                            destinationBalance = destBalance + amount,
+                            successMessage = "Transfer of ${formatMoney(amount)} completed."
+                        )
+                    }
+                    onSuccess(TransferConfirmation(
+                        sourceAccount = sourceAccount,
+                        destinationTarget = destinationTarget,
+                        amount = amount,
+                        direction = "out",
+                        sourceBalance = sourceBalance - amount,
+                        destinationBalance = destBalance + amount,
+                        timestamp = nowIso()
+                    ))
+                }
+                .onFailure { throwable ->
+                    _uiState.update {
+                        it.copy(isTransferPending = false, errorMessage = throwable.message ?: "Transfer failed.")
+                    }
+                    onError("Transfer failed: ${throwable.message}")
+                }
+        }
+    }
+
+    suspend fun getAccountBalance(accountId: String, userId: String): Double {
+        val ledgerRows = repository.getLedgerEntries(userId).data?.entries ?: emptyList()
+        return ledgerRows
+            .filter { it.sourceType == accountId || it.sourceId == accountId }
+            .sumOf {
+                if (it.direction == "out") -it.amount else it.amount
+            }
+    }
+
+    suspend fun listTransfers(userId: String): List<TransferConfirmation> {
+        return repository.listTransfers(userId).data?.transfers?.map { transfer ->
+            TransferConfirmation(
+                sourceAccount = transfer.sourceAccount,
+                destinationTarget = transfer.destinationTarget,
+                amount = transfer.amount,
+                direction = transfer.direction,
+                sourceBalance = 0.0,
+                destinationBalance = 0.0,
+                timestamp = transfer.timestamp
+            )
+        } ?: emptyList()
+    }
+
+    fun getAvailableSourceAccounts(userId: String): List<String> {
+        return listOf("his", "hers", "joint")
+    }
+
+    fun getAvailableDestinationTargets(userId: String): List<String> {
+        return listOf("joint", "vacation", "dream")
+    }
+
+    fun formatMoney(amount: Double): String {
+        return "%.2f".format(amount)
+    }
+
+    private fun nowIso(): String {
+        return java.time.Instant.now().toString()
     }
 }

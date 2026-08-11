@@ -90,15 +90,15 @@ fun TaskRow(
                         AssigneeBadge(task.assigneeLabel)
                     }
                     CategoryPill(task.category)
-                    if (task.repeatRule.isNotBlank() && task.repeatRule != "none") {
+                    if (!task.repeatRule.isNullOrBlank() && task.repeatRule != "none") {
                         Pill(
-                            text = task.repeatRule.replaceFirstChar { it.uppercase() },
+                            text = task.repeatRule.orEmpty().replaceFirstChar { it.uppercase() },
                             icon = Icons.Filled.Repeat,
                             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                             contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                     }
-                    if (task.dueDate.isNotBlank()) {
+                    if (!task.dueDate.isNullOrBlank()) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -110,7 +110,7 @@ fun TaskRow(
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
-                                text = formatDateOnly(task.dueDate),
+                                text = formatDateOnly(task.dueDate.orEmpty()),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

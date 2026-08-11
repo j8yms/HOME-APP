@@ -8,14 +8,17 @@ import com.example.householdapp.core.network.BootstrapRequest
 import com.example.householdapp.core.network.CompleteTaskRequest
 import com.example.householdapp.core.network.ClaimTaskRequest
 import com.example.householdapp.core.network.CreateBillRequest
+import com.example.householdapp.core.network.CreateBudgetRequest
 import com.example.householdapp.core.network.CreateHouseholdLogRequest
 import com.example.householdapp.core.network.CreateReferenceEntryRequest
 import com.example.householdapp.core.network.CreateRewardRequest
 import com.example.householdapp.core.network.CreateShoppingItemRequest
+import com.example.householdapp.core.network.CreateSubscriptionRequest
 import com.example.householdapp.core.network.CreateTaskRequest
 import com.example.householdapp.core.network.DeleteReferenceEntryRequest
 import com.example.householdapp.core.network.DeleteTaskRequest
 import com.example.householdapp.core.network.DeviceBootstrapRequest
+import com.example.householdapp.core.network.ExecuteTransferRequest
 import com.example.householdapp.core.network.LogWorkoutRequest
 import com.example.householdapp.core.network.RedeemRewardRequest
 import com.example.householdapp.core.network.SetFinanceCurrencyRequest
@@ -23,6 +26,7 @@ import com.example.householdapp.core.network.SetFinanceGoalsRequest
 import com.example.householdapp.core.network.UpdateBillRequest
 import com.example.householdapp.core.network.UpdateReferenceEntryRequest
 import com.example.householdapp.core.network.UpdateShoppingItemRequest
+import com.example.householdapp.core.network.UpdateSubscriptionRequest
 import com.example.householdapp.core.network.UpdateTaskRequest
 import com.example.householdapp.core.network.UpdateProfileRequest
 
@@ -214,6 +218,57 @@ class FinanceRepository {
                 purchasedByUserId = userId
             )
         )
+
+    suspend fun executeTransfer(sourceAccount: String, destinationTarget: String, amount: Double, userId: String) =
+        api.executeTransfer(
+            request = ExecuteTransferRequest(
+                sourceAccount = sourceAccount,
+                destinationTarget = destinationTarget,
+                amount = amount,
+                direction = "out",
+                userId = userId
+            )
+        )
+
+    suspend fun listTransfers(userId: String) = api.listTransfers(userId = userId)
+
+    suspend fun getLedgerEntries(userId: String = "") = api.listLedger(userId = userId)
+
+    suspend fun getAnalytics(userId: String) = api.getAnalytics(userId = userId)
+
+    suspend fun listBudgets(userId: String = "") = api.listBudgets(userId = userId)
+
+    suspend fun createBudget(userId: String, category: String, month: String, budgetLimit: Double) =
+        api.createBudget(
+            request = CreateBudgetRequest(
+                userId = userId,
+                category = category,
+                month = month,
+                budgetLimit = budgetLimit
+            )
+        )
+
+    suspend fun listSubscriptions(userId: String = "") = api.listSubscriptions(userId = userId)
+
+    suspend fun createSubscription(userId: String, serviceName: String, nextRenewalDate: String, billingInterval: String = "", terminationRule: String = "") =
+        api.createSubscription(
+            request = CreateSubscriptionRequest(
+                userId = userId,
+                serviceName = serviceName,
+                nextRenewalDate = nextRenewalDate,
+                billingInterval = billingInterval,
+                terminationRule = terminationRule
+            )
+        )
+
+    suspend fun updateSubscription(subscriptionId: String, nextRenewalDate: String? = null, isActive: Boolean? = null) =
+        api.updateSubscription(
+            request = UpdateSubscriptionRequest(
+                subscriptionId = subscriptionId,
+                nextRenewalDate = nextRenewalDate,
+                isActive = isActive
+            )
+        )
 }
 
 class ReferenceRepository {
@@ -268,6 +323,7 @@ object PlaceholderData {
             status = "open",
             priority = "medium",
             dueDate = "2026-06-08",
+            repeatRule = null,
             xpReward = 20,
             coinReward = 5,
             streakEligible = true,
@@ -283,6 +339,7 @@ object PlaceholderData {
             status = "open",
             priority = "high",
             dueDate = "2026-06-08",
+            repeatRule = null,
             xpReward = 35,
             coinReward = 8,
             streakEligible = true,

@@ -31,6 +31,8 @@ object SessionManager {
     private const val KEY_PARTNER_STREAK = "partner_streak"
     private const val KEY_PARTNER_LONGEST_STREAK = "partner_longest_streak"
     private const val KEY_CURRENCY = "currency"
+    private const val KEY_HOUSEHOLD_ID = "household_id"
+    private const val KEY_PERSONAL_IDENTITY = "personal_identity"
 
     private val _sessionState = MutableStateFlow(SessionState())
     val sessionState: StateFlow<SessionState> = _sessionState.asStateFlow()
@@ -88,6 +90,8 @@ object SessionManager {
             editor.putInt(KEY_LONGEST_STREAK, user.longestStreak)
             editor.putString(KEY_PHOTO_URL, user.photoUrl)
             editor.putString(KEY_HOUSEHOLD_SIDE, user.householdSide)
+            editor.putString(KEY_HOUSEHOLD_ID, user.householdId)
+            editor.putString(KEY_PERSONAL_IDENTITY, user.personalIdentity)
         }
         state.partner?.let { partner ->
             editor.putString(KEY_PARTNER_ID, partner.userId)
@@ -122,7 +126,9 @@ object SessionManager {
             currentStreak = p.getInt(KEY_CURRENT_STREAK, 0),
             longestStreak = p.getInt(KEY_LONGEST_STREAK, 0),
             photoUrl = p.getString(KEY_PHOTO_URL, "") ?: "",
-            householdSide = p.getString(KEY_HOUSEHOLD_SIDE, "") ?: ""
+            householdSide = p.getString(KEY_HOUSEHOLD_SIDE, "") ?: "",
+            householdId = p.getString(KEY_HOUSEHOLD_ID, "") ?: "",
+            personalIdentity = p.getString(KEY_PERSONAL_IDENTITY, "") ?: ""
         )
 
         val partnerId = p.getString(KEY_PARTNER_ID, null)
@@ -136,7 +142,9 @@ object SessionManager {
                 level = p.getInt(KEY_PARTNER_LEVEL, 1),
                 coinsTotal = p.getInt(KEY_PARTNER_COINS, 0),
                 currentStreak = p.getInt(KEY_PARTNER_STREAK, 0),
-                longestStreak = p.getInt(KEY_PARTNER_LONGEST_STREAK, 0)
+                longestStreak = p.getInt(KEY_PARTNER_LONGEST_STREAK, 0),
+                householdId = "",
+                personalIdentity = ""
             )
         } else null
 
@@ -145,7 +153,9 @@ object SessionManager {
             user = user,
             partner = partner,
             email = p.getString(KEY_EMAIL, "") ?: "",
-            currency = p.getString(KEY_CURRENCY, "USD") ?: "USD"
+            currency = p.getString(KEY_CURRENCY, "USD") ?: "USD",
+            householdId = user.householdId,
+            personalIdentity = user.personalIdentity
         )
     }
 }

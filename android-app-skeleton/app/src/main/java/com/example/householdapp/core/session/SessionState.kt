@@ -7,5 +7,7 @@ data class SessionState(
     val user: UserProfile? = null,
     val partner: UserProfile? = null,
     val email: String = "",
-    val currency: String = "USD"
+    val currency: String = "USD",
+    val householdId: String = "",
+    val personalIdentity: String = ""
 )

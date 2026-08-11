@@ -125,7 +125,7 @@ interface HouseholdApiService {
     @GET
     suspend fun listLedger(
         @Url path: String = BuildConfig.APPS_SCRIPT_DEPLOYMENT_PATH,
-        @Query("route") route: String = "history/ledger",
+        @Query("route") route: String = "ledger/list",
         @Query("userId") userId: String = ""
     ): ApiResponse<LedgerResponse>
 
@@ -219,6 +219,58 @@ interface HouseholdApiService {
         @Url path: String = BuildConfig.APPS_SCRIPT_DEPLOYMENT_PATH,
         @Body request: UpdateShoppingItemRequest
     ): ApiResponse<UpdateShoppingItemResponse>
+
+    @POST
+    suspend fun executeTransfer(
+        @Url path: String = BuildConfig.APPS_SCRIPT_DEPLOYMENT_PATH,
+        @Body request: ExecuteTransferRequest
+    ): ApiResponse<ExecuteTransferResponse>
+
+    @GET
+    suspend fun listTransfers(
+        @Url path: String = BuildConfig.APPS_SCRIPT_DEPLOYMENT_PATH,
+        @Query("route") route: String = "transfers/list",
+        @Query("userId") userId: String = ""
+    ): ApiResponse<TransfersResponse>
+
+    @GET
+    suspend fun getAnalytics(
+        @Url path: String = BuildConfig.APPS_SCRIPT_DEPLOYMENT_PATH,
+        @Query("route") route: String = "analytics/chart",
+        @Query("userId") userId: String
+    ): ApiResponse<AnalyticsResponse>
+
+    @GET
+    suspend fun listBudgets(
+        @Url path: String = BuildConfig.APPS_SCRIPT_DEPLOYMENT_PATH,
+        @Query("route") route: String = "budgets/list",
+        @Query("userId") userId: String = ""
+    ): ApiResponse<BudgetsResponse>
+
+    @POST
+    suspend fun createBudget(
+        @Url path: String = BuildConfig.APPS_SCRIPT_DEPLOYMENT_PATH,
+        @Body request: CreateBudgetRequest
+    ): ApiResponse<CreateBudgetResponse>
+
+    @GET
+    suspend fun listSubscriptions(
+        @Url path: String = BuildConfig.APPS_SCRIPT_DEPLOYMENT_PATH,
+        @Query("route") route: String = "subscriptions/list",
+        @Query("userId") userId: String = ""
+    ): ApiResponse<SubscriptionsResponse>
+
+    @POST
+    suspend fun createSubscription(
+        @Url path: String = BuildConfig.APPS_SCRIPT_DEPLOYMENT_PATH,
+        @Body request: CreateSubscriptionRequest
+    ): ApiResponse<CreateSubscriptionResponse>
+
+    @POST
+    suspend fun updateSubscription(
+        @Url path: String = BuildConfig.APPS_SCRIPT_DEPLOYMENT_PATH,
+        @Body request: UpdateSubscriptionRequest
+    ): ApiResponse<UpdateSubscriptionResponse>
 }
 
 object ApiFactory {
