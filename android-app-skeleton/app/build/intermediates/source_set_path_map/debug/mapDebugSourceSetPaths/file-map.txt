@@ -60,9 +60,9 @@ com.example.householdapp-activity-ktx-1.9.1-58 C:\Users\PC\.gradle\caches\transf
 com.example.householdapp-ui-util-release-59 C:\Users\PC\.gradle\caches\transforms-4\f62e6b3ad92158946dc794d9545cade1\transformed\ui-util-release\res
 com.example.householdapp-ui-graphics-release-60 C:\Users\PC\.gradle\caches\transforms-4\f77e017e52ef79951d3d9a73af5ef52a\transformed\ui-graphics-release\res
 com.example.householdapp-ui-tooling-release-61 C:\Users\PC\.gradle\caches\transforms-4\fe4ba43a471761ae8ee71f16f3eef986\transformed\ui-tooling-release\res
-com.example.householdapp-resValues-62 D:\VIBE CODING\home app\android-app-skeleton\app\build\generated\res\resValues\debug
-com.example.householdapp-packageDebugResources-63 D:\VIBE CODING\home app\android-app-skeleton\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
-com.example.householdapp-packageDebugResources-64 D:\VIBE CODING\home app\android-app-skeleton\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
-com.example.householdapp-debug-65 D:\VIBE CODING\home app\android-app-skeleton\app\build\intermediates\merged_res\debug\mergeDebugResources
-com.example.householdapp-debug-66 D:\VIBE CODING\home app\android-app-skeleton\app\src\debug\res
-com.example.householdapp-main-67 D:\VIBE CODING\home app\android-app-skeleton\app\src\main\res
+com.example.householdapp-resValues-62 D:\VIBE CODING\HOME-APP\android-app-skeleton\app\build\generated\res\resValues\debug
+com.example.householdapp-packageDebugResources-63 D:\VIBE CODING\HOME-APP\android-app-skeleton\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.example.householdapp-packageDebugResources-64 D:\VIBE CODING\HOME-APP\android-app-skeleton\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.example.householdapp-debug-65 D:\VIBE CODING\HOME-APP\android-app-skeleton\app\build\intermediates\merged_res\debug\mergeDebugResources
+com.example.householdapp-debug-66 D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\debug\res
+com.example.householdapp-main-67 D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\res

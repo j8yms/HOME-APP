@@ -106,6 +106,7 @@ function redeemReward(payload) {
   var userId = normalizeString(payload.userId);
   var rewardId = normalizeString(payload.rewardId);
   var notes = normalizeString(payload.notes);
+  var requestId = payload.requestId || generateId('rwd', SHEET_NAMES.REWARD_REDEMPTIONS);
 
   if (!userId || !rewardId) {
     throw new Error('userId and rewardId are required.');
@@ -116,53 +117,94 @@ function redeemReward(payload) {
     throw new Error('User not found.');
   }
 
+  var householdId = getUserHouseholdId(userId);
+  if (!householdId) {
+    throw new Error('User not associated with a household.');
+  }
+
   var reward = getRewardById(rewardId);
   if (!reward || !toBoolean(reward.is_active)) {
     throw new Error('Reward not found or inactive.');
   }
 
+  // Household isolation: verify reward belongs to user's household
+  var rewardHouseholdId = getRewardHouseholdId(rewardId);
+  if (rewardHouseholdId !== householdId) {
+    throw new Error('This reward does not belong to your household.');
+  }
+
   var costCoins = toInt(reward.cost_coins);
   var costXp = toInt(reward.cost_xp);
 
-  if (toInt(user.coins_total) < costCoins) {
-    throw new Error('Insufficient coins to redeem this reward.');
+  // Use LockService for atomic operation
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30);  // Wait up to 30 seconds for lock
+
+  try {
+    // Check idempotency - if a redemption with this requestId already exists, skip
+    var existingRedemptions = findManyBy(SHEET_NAMES.REWARD_REDEMPTIONS, function(row) {
+      return row.request_id === requestId;
+    });
+    if (existingRedemptions.length > 0) {
+      // Return existing redemption data
+      var existing = existingRedemptions[0];
+      var updatedUser = getUserById(userId);
+      return {
+        reward: mapRewardItem(reward),
+        redemptionId: existing.redemption_id,
+        user: Object.assign({}, mapUserSummary(updatedUser), {
+          xpTotal: updatedUser.xp_total,
+          coinsTotal: updatedUser.coins_total,
+          currentStreak: updatedUser.currentStreak,
+          longestStreak: updatedUser.longestStreak
+        })
+      };
+    }
+
+    // Validate sufficient coins and XP
+    if (toInt(user.coins_total) < costCoins) {
+      throw new Error('Insufficient coins to redeem this reward. You have ' + user.coins_total + ' coins.');
+    }
+
+    if (toInt(user.xp_total) < costXp) {
+      throw new Error('Insufficient XP to redeem this reward. You have ' + user.xp_total + ' XP.');
+    }
+
+    var redemptionId = generateId('r', SHEET_NAMES.REWARD_REDEMPTIONS);
+    appendRow(SHEET_NAMES.REWARD_REDEMPTIONS, {
+      redemption_id: redemptionId,
+      request_id: requestId,
+      reward_id: rewardId,
+      user_id: userId,
+      cost_coins: costCoins,
+      cost_xp: costXp,
+      status: 'pending_approval',
+      redeemed_at: nowIso(),
+      resolved_at: '',
+      notes: notes
+    });
+
+    appendLedgerEntry({
+      userId: userId,
+      sourceType: 'reward',
+      sourceId: rewardId,
+      actionType: 'reward_redeem',
+      xpDelta: -costXp,
+      coinDelta: -costCoins,
+      reason: 'Reward redeemed: ' + reward.title
+    });
+
+    var totals = updateUserTotals(userId, -costXp, -costCoins);
+    var updatedUser = getUserById(userId);
+
+    return {
+      reward: mapRewardItem(reward),
+      redemptionId: redemptionId,
+      user: Object.assign({}, mapUserSummary(updatedUser), totals)
+    };
+  } finally {
+    lock.release();
   }
-
-  if (toInt(user.xp_total) < costXp) {
-    throw new Error('Insufficient XP to redeem this reward.');
-  }
-
-  var redemptionId = generateId('r', SHEET_NAMES.REWARD_REDEMPTIONS);
-  appendRow(SHEET_NAMES.REWARD_REDEMPTIONS, {
-    redemption_id: redemptionId,
-    reward_id: rewardId,
-    user_id: userId,
-    cost_coins: costCoins,
-    cost_xp: costXp,
-    status: 'pending_approval',
-    redeemed_at: nowIso(),
-    resolved_at: '',
-    notes: notes
-  });
-
-  appendLedgerEntry({
-    userId: userId,
-    sourceType: 'reward',
-    sourceId: rewardId,
-    actionType: 'reward_redeem',
-    xpDelta: -costXp,
-    coinDelta: -costCoins,
-    reason: 'Reward redeemed: ' + reward.title
-  });
-
-  var totals = updateUserTotals(userId, -costXp, -costCoins);
-  var updatedUser = getUserById(userId);
-
-  return {
-    reward: mapRewardItem(reward),
-    redemptionId: redemptionId,
-    user: Object.assign({}, mapUserSummary(updatedUser), totals)
-  };
 }
 
 function getRewardById(rewardId) {
@@ -182,4 +224,16 @@ function mapRewardItem(row) {
     isActive: toBoolean(row.is_active),
     hideFromPartner: toBoolean(row.hide_from_partner)
   };
+}
+
+function getUserHouseholdId(userId) {
+  var user = findOneBy(SHEET_NAMES.USERS, function(row) {
+    return row.user_id === userId;
+  });
+  return user ? user.household_id : '';
+}
+
+function getRewardHouseholdId(rewardId) {
+  var reward = getRewardById(rewardId);
+  return reward ? reward.household_id : '';
 }

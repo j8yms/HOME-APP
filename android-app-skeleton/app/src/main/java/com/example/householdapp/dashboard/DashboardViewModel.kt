@@ -2,7 +2,16 @@ package com.example.householdapp.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.householdapp.core.model.ActivityFeed
+import com.example.householdapp.core.model.CouplesStreak
 import com.example.householdapp.core.model.DashboardData
+import com.example.householdapp.core.model.GamificationData
+import com.example.householdapp.core.model.GoalsData
+import com.example.householdapp.core.model.GreetingData
+import com.example.householdapp.core.model.HouseholdData
+import com.example.householdapp.core.model.MoneyData
+import com.example.householdapp.core.model.QuickActionsData
+import com.example.householdapp.core.model.TodayData
 import com.example.householdapp.core.repository.DashboardRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +38,7 @@ class DashboardViewModel(
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
-                    isLoading = !forceRefresh && it.dashboardData.currentUser == null,
+                    isLoading = !forceRefresh && (it.dashboardData.currentUser == null && it.dashboardData.greeting.currentUser == null),
                     isRefreshing = forceRefresh,
                     errorMessage = null
                 )
@@ -49,6 +58,58 @@ class DashboardViewModel(
                         return@launch
                     }
 
+                    // Map API response to DashboardData
+                    val greeting = GreetingData(
+                        currentUser = data.currentUser,
+                        date = data.greeting?.date ?: "",
+                        householdName = data.greeting?.householdName ?: "Our Household"
+                    )
+
+                    val today = TodayData(
+                        tasksDueToday = data.tasksDueToday ?: emptyList(),
+                        overdueTasks = data.overdueTasks ?: emptyList(),
+                        todayBills = data.today?.todayBills ?: emptyList(),
+                        upcomingBills = data.today?.upcomingBills ?: emptyList(),
+                        overdueBills = data.today?.overdueBills ?: emptyList(),
+                        todayEvents = data.today?.todayEvents ?: emptyList(),
+                        quickActions = data.today?.quickActions ?: QuickActionsData()
+                    )
+
+                    val money = MoneyData(
+                        totalBalance = data.money?.totalBalance ?: 0.0,
+                        accountBreakdown = data.money?.accountBreakdown ?: emptyMap(),
+                        incomeThisMonth = data.money?.incomeThisMonth ?: 0.0,
+                        expensesThisMonth = data.money?.expensesThisMonth ?: 0.0,
+                        remainingBudget = data.money?.remainingBudget ?: 0.0,
+                        subscriptionTotalMonthly = data.money?.subscriptionTotalMonthly ?: 0.0,
+                        upcomingSubscriptions = data.money?.upcomingSubscriptions ?: emptyList()
+                    )
+
+                    val household = HouseholdData(
+                        openTasks = data.household?.openTasks ?: emptyList(),
+                        completedTasks = data.household?.completedTasks ?: emptyList(),
+                        maintenanceIssues = data.household?.maintenanceIssues ?: emptyList(),
+                        shoppingItems = data.household?.shoppingItems ?: emptyList(),
+                        importantReminders = data.household?.importantReminders ?: emptyList()
+                    )
+
+                    val goals = GoalsData(
+                        savingsGoals = data.goals?.savingsGoals ?: emptyList(),
+                        monthlyTargets = data.goals?.monthlyTargets ?: emptyMap()
+                    )
+
+                    val activity = ActivityFeed(
+                        entries = data.activity?.entries ?: emptyList()
+                    )
+
+                    val gamification = GamificationData(
+                        xpTotal = data.gamification?.xpTotal ?: 0,
+                        level = data.gamification?.level ?: 1,
+                        coinsTotal = data.gamification?.coinsTotal ?: 0,
+                        currentStreak = data.gamification?.currentStreak ?: 0,
+                        longestStreak = data.gamification?.longestStreak ?: 0
+                    )
+
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -57,9 +118,16 @@ class DashboardViewModel(
                             dashboardData = DashboardData(
                                 currentUser = data.currentUser,
                                 partner = data.partner,
-                                tasksDueToday = data.tasksDueToday,
-                                overdueTasks = data.overdueTasks,
-                                couplesStreak = data.couplesStreak
+                                tasksDueToday = data.tasksDueToday ?: emptyList(),
+                                overdueTasks = data.overdueTasks ?: emptyList(),
+                                couplesStreak = data.couplesStreak ?: CouplesStreak(),
+                                greeting = greeting,
+                                today = today,
+                                money = money,
+                                household = household,
+                                goals = goals,
+                                activity = activity,
+                                gamification = gamification
                             )
                         )
                     }

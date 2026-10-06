@@ -1,11 +1,17 @@
 package com.example.householdapp.core.network
 
+import com.example.householdapp.core.model.ActivityFeed
 import com.example.householdapp.core.model.Bill
 import com.example.householdapp.core.model.Budget
 import com.example.householdapp.core.model.CouplesStreak
 import com.example.householdapp.core.model.FinanceSummary
+import com.example.householdapp.core.model.GamificationData
+import com.example.householdapp.core.model.GoalsData
+import com.example.householdapp.core.model.GreetingData
+import com.example.householdapp.core.model.HouseholdData
 import com.example.householdapp.core.model.HouseholdLogEntry
 import com.example.householdapp.core.model.LedgerEntry
+import com.example.householdapp.core.model.MoneyData
 import com.example.householdapp.core.model.MoneyTransaction
 import com.example.householdapp.core.model.Redemption
 import com.example.householdapp.core.model.ReferenceEntry
@@ -13,6 +19,7 @@ import com.example.householdapp.core.model.RewardItem
 import com.example.householdapp.core.model.ShoppingItem
 import com.example.householdapp.core.model.SubscriptionInfo
 import com.example.householdapp.core.model.Task
+import com.example.householdapp.core.model.TodayData
 import com.example.householdapp.core.model.TransferConfirmation
 import com.example.householdapp.core.model.UserProfile
 import com.example.householdapp.core.model.WorkoutEntry
@@ -50,7 +57,14 @@ data class DashboardResponse(
     val partner: UserProfile? = null,
     val tasksDueToday: List<Task> = emptyList(),
     val overdueTasks: List<Task> = emptyList(),
-    val couplesStreak: CouplesStreak = CouplesStreak()
+    val couplesStreak: CouplesStreak = CouplesStreak(),
+    val greeting: GreetingData? = null,
+    val today: TodayData? = null,
+    val money: MoneyData? = null,
+    val household: HouseholdData? = null,
+    val goals: GoalsData? = null,
+    val activity: ActivityFeed? = null,
+    val gamification: GamificationData? = null
 )
 
 data class TasksResponse(
@@ -68,6 +82,7 @@ data class CreateTaskRequest(
     val priority: String,
     val dueDate: String,
     val repeatRule: String = "",
+    val recurrenceId: String = "",  // series_id for recurring task groups
     val streakEligible: Boolean = true
 )
 
@@ -225,7 +240,8 @@ data class AddTransactionRequest(
     val category: String = "",
     val amount: Double,
     val wallet: String = "joint",
-    val userId: String
+    val userId: String,
+    val requestId: String = ""
 )
 
 data class AddTransactionResponse(

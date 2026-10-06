@@ -9,8 +9,8 @@
 9        android:targetSdkVersion="34" />
 10
 11    <uses-permission android:name="android.permission.INTERNET" />
-11-->D:\VIBE CODING\home app\android-app-skeleton\app\src\main\AndroidManifest.xml:4:5-67
-11-->D:\VIBE CODING\home app\android-app-skeleton\app\src\main\AndroidManifest.xml:4:22-64
+11-->D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\AndroidManifest.xml:4:5-67
+11-->D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\AndroidManifest.xml:4:22-64
 12
 13    <permission
 13-->[androidx.core:core:1.13.1] C:\Users\PC\.gradle\caches\transforms-4\1938adbed7f6eb7a8793af6578215887\transformed\core-1.13.1\AndroidManifest.xml:22:5-24:47
@@ -24,36 +24,36 @@
 17-->[androidx.core:core:1.13.1] C:\Users\PC\.gradle\caches\transforms-4\1938adbed7f6eb7a8793af6578215887\transformed\core-1.13.1\AndroidManifest.xml:26:22-94
 18
 19    <application
-19-->D:\VIBE CODING\home app\android-app-skeleton\app\src\main\AndroidManifest.xml:6:5-20:19
+19-->D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\AndroidManifest.xml:6:5-20:19
 20        android:allowBackup="false"
-20-->D:\VIBE CODING\home app\android-app-skeleton\app\src\main\AndroidManifest.xml:7:9-36
+20-->D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\AndroidManifest.xml:7:9-36
 21        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
 21-->[androidx.core:core:1.13.1] C:\Users\PC\.gradle\caches\transforms-4\1938adbed7f6eb7a8793af6578215887\transformed\core-1.13.1\AndroidManifest.xml:28:18-86
 22        android:debuggable="true"
 23        android:extractNativeLibs="false"
 24        android:icon="@mipmap/ic_launcher"
-24-->D:\VIBE CODING\home app\android-app-skeleton\app\src\main\AndroidManifest.xml:8:9-43
+24-->D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\AndroidManifest.xml:8:9-43
 25        android:label="@string/app_name"
-25-->D:\VIBE CODING\home app\android-app-skeleton\app\src\main\AndroidManifest.xml:9:9-41
+25-->D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\AndroidManifest.xml:9:9-41
 26        android:supportsRtl="true"
-26-->D:\VIBE CODING\home app\android-app-skeleton\app\src\main\AndroidManifest.xml:10:9-35
+26-->D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\AndroidManifest.xml:10:9-35
 27        android:theme="@style/Theme.HouseholdApp" >
-27-->D:\VIBE CODING\home app\android-app-skeleton\app\src\main\AndroidManifest.xml:11:9-50
+27-->D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\AndroidManifest.xml:11:9-50
 28        <activity
-28-->D:\VIBE CODING\home app\android-app-skeleton\app\src\main\AndroidManifest.xml:12:9-19:20
+28-->D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\AndroidManifest.xml:12:9-19:20
 29            android:name="com.example.householdapp.MainActivity"
-29-->D:\VIBE CODING\home app\android-app-skeleton\app\src\main\AndroidManifest.xml:13:13-41
+29-->D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\AndroidManifest.xml:13:13-41
 30            android:exported="true" >
-30-->D:\VIBE CODING\home app\android-app-skeleton\app\src\main\AndroidManifest.xml:14:13-36
+30-->D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\AndroidManifest.xml:14:13-36
 31            <intent-filter>
-31-->D:\VIBE CODING\home app\android-app-skeleton\app\src\main\AndroidManifest.xml:15:13-18:29
+31-->D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\AndroidManifest.xml:15:13-18:29
 32                <action android:name="android.intent.action.MAIN" />
-32-->D:\VIBE CODING\home app\android-app-skeleton\app\src\main\AndroidManifest.xml:16:17-69
-32-->D:\VIBE CODING\home app\android-app-skeleton\app\src\main\AndroidManifest.xml:16:25-66
+32-->D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\AndroidManifest.xml:16:17-69
+32-->D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\AndroidManifest.xml:16:25-66
 33
 34                <category android:name="android.intent.category.LAUNCHER" />
-34-->D:\VIBE CODING\home app\android-app-skeleton\app\src\main\AndroidManifest.xml:17:17-77
-34-->D:\VIBE CODING\home app\android-app-skeleton\app\src\main\AndroidManifest.xml:17:27-74
+34-->D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\AndroidManifest.xml:17:17-77
+34-->D:\VIBE CODING\HOME-APP\android-app-skeleton\app\src\main\AndroidManifest.xml:17:27-74
 35            </intent-filter>
 36        </activity>
 37        <activity

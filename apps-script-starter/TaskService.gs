@@ -1,12 +1,16 @@
 function listTasks(payload) {
   var status = normalizeString(payload.status);
   var assignedToUserId = normalizeString(payload.assignedToUserId);
+  var recurrenceId = normalizeString(payload.recurrenceId);
+  var householdId = getUserHouseholdId(assignedToUserId) || '';
   var hasStatus = status !== '';
 
   return findManyBy(SHEET_NAMES.TASKS, function(row) {
     var statusMatch = hasStatus ? row.status === status : row.status !== 'archived';
+    var householdMatch = !householdId || row.household_id === householdId;
+    var recurrenceMatch = recurrenceId ? row.recurrence_id === recurrenceId : true;
     var assigneeMatch = !assignedToUserId || row.assigned_to_user_id === assignedToUserId;
-    return statusMatch && assigneeMatch;
+    return statusMatch && householdMatch && recurrenceMatch && assigneeMatch;
   }).map(mapTask);
 }
 
@@ -41,22 +45,28 @@ function createTask(payload) {
   validateTaskPayload(payload, true);
 
   var priority = normalizeString(payload.priority) || 'medium';
+  var recurrenceId = normalizeString(payload.recurrenceId);
   var reward = resolveTaskReward(priority, payload.xpReward, payload.coinReward);
+  var assignedToUserId = normalizeString(payload.assignedToUserId);
+  var householdId = getUserHouseholdId(assignedToUserId) || '';
+
   var task = {
     task_id: generateId('t', SHEET_NAMES.TASKS),
     title: normalizeString(payload.title),
     description: normalizeString(payload.description),
     category: normalizeString(payload.category) || 'General',
-    assigned_to_user_id: normalizeString(payload.assignedToUserId),
-    assignee_label: normalizeAssigneeLabel(payload.assigneeLabel, payload.assignedToUserId),
+    assigned_to_user_id: assignedToUserId,
+    assignee_label: normalizeAssigneeLabel(payload.assigneeLabel, assignedToUserId),
     created_by_user_id: normalizeString(payload.createdByUserId),
     status: 'open',
     priority: priority,
     due_date: normalizeString(payload.dueDate),
     repeat_rule: normalizeString(payload.repeatRule),
+    recurrence_id: recurrenceId,  // series_id for recurring task groups
     xp_reward: reward.xpReward,
     coin_reward: reward.coinReward,
     streak_eligible: String(Boolean(payload.streakEligible)),
+    household_id: householdId,
     completed_at: '',
     completed_by_user_id: '',
     created_at: nowIso(),
@@ -362,6 +372,7 @@ function mapTask(row) {
     priority: row.priority,
     dueDate: row.due_date || '',
     repeatRule: row.repeat_rule || '',
+    recurrenceId: row.recurrence_id || '',
     xpReward: toInt(row.xp_reward),
     coinReward: toInt(row.coin_reward),
     streakEligible: toBoolean(row.streak_eligible),
@@ -369,6 +380,7 @@ function mapTask(row) {
     completedByUserId: row.completed_by_user_id || '',
     createdAt: row.created_at || '',
     updatedAt: row.updated_at || '',
-    version: toInt(row.version, 1)
+    version: toInt(row.version, 1),
+    householdId: row.household_id || ''
   };
 }

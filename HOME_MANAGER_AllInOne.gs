@@ -122,6 +122,58 @@ function dispatchRoute(route, payload) {
       return jsonSuccess({ budget: createBudget(payload) });
     case 'subscriptions/list':
       return jsonSuccess({ subscriptions: listSubscriptions(payload) });
+    case 'wealth/investment_accounts':
+      return jsonSuccess({ accounts: listInvestmentAccounts(payload) });
+    case 'wealth/investment_accounts/create':
+      return jsonSuccess({ account: createInvestmentAccount(payload) });
+    case 'wealth/investment_accounts/update':
+      return jsonSuccess({ account: updateInvestmentAccount(payload) });
+    case 'wealth/investment_accounts/delete':
+      return jsonSuccess({ success: true });
+    case 'wealth/mmf':
+      return jsonSuccess({ accounts: listMMFAccounts(payload) });
+    case 'wealth/mmf/create':
+      return jsonSuccess({ account: createMMFAccount(payload) });
+    case 'wealth/mmf/update':
+      return jsonSuccess({ account: updateMMFAccount(payload) });
+    case 'wealth/mmf/valuation':
+      return jsonSuccess({ valuation: updateMMFValuation(payload) });
+    case 'wealth/sacco':
+      return jsonSuccess({ accounts: listSACCOAccounts(payload) });
+    case 'wealth/sacco/create':
+      return jsonSuccess({ account: createSACCOAccount(payload) });
+    case 'wealth/sacco/deposit':
+      return jsonSuccess({ transaction: recordSACCODeposit(payload) });
+    case 'wealth/sacco/withdrawal':
+      return jsonSuccess({ transaction: recordSACCOWithdrawal(payload) });
+    case 'wealth/trading_account':
+      return jsonSuccess({ account: getTradingAccount(payload) });
+    case 'wealth/trading_account/create':
+      return jsonSuccess({ account: createTradingAccount(payload) });
+    case 'wealth/trade_journal':
+      return jsonSuccess({ trades: listTradeJournal(payload) });
+    case 'wealth/trade_journal/create':
+      return jsonSuccess({ trade: createTradeJournalEntry(payload) });
+    case 'wealth/milestones':
+      return jsonSuccess({ milestones: listWealthMilestones(payload) });
+    case 'wealth/milestones/create':
+      return jsonSuccess({ milestone: createWealthMilestone(payload) });
+    case 'wealth/financial_freedom':
+      return jsonSuccess({ progress: calculateFinancialFreedom(payload) });
+    case 'wealth/asset_register':
+      return jsonSuccess({ assets: listAssetRegister(payload) });
+    case 'wealth/dashboard':
+      return jsonSuccess({ dashboard: getWealthDashboard(payload) });
+    case 'wealth/timeline':
+      return jsonSuccess({ timeline: getWealthTimeline(payload) });
+    case 'wealth/alerts':
+      return jsonSuccess({ alerts: listWealthAlerts(payload) });
+    case 'wealth/financial_habits':
+      return jsonSuccess({ habits: getFinancialHabits(payload) });
+    case 'wealth/report':
+      return jsonSuccess({ report: generateWealthReport(payload) });
+    case 'library/list':
+      return jsonSuccess({ subscriptions: listSubscriptions(payload) });
     case 'subscriptions/create':
       return jsonSuccess(createSubscription(payload));
     case 'subscriptions/update':

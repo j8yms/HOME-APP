@@ -112,13 +112,13 @@
                     }
                 },
                 {
-                    "source": "D:\\VIBE CODING\\home app\\android-app-skeleton\\app\\src\\main\\res\\values\\strings.xml",
+                    "source": "D:\\VIBE CODING\\HOME-APP\\android-app-skeleton\\app\\src\\main\\res\\values\\strings.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",
-                        "startOffsets": "55",
+                        "startOffsets": "57",
                         "endColumns": "49",
-                        "endOffsets": "100"
+                        "endOffsets": "102"
                     },
                     "to": {
                         "startLines": "1893",
@@ -294,25 +294,6 @@
                     }
                 },
                 {
-                    "source": "D:\\VIBE CODING\\home app\\android-app-skeleton\\app\\src\\main\\res\\values\\themes.xml",
-                    "from": {
-                        "startLines": "5,2",
-                        "startColumns": "4,4",
-                        "startOffsets": "231,102",
-                        "endLines": "5,4",
-                        "endColumns": "26,12",
-                        "endOffsets": "253,226"
-                    },
-                    "to": {
-                        "startLines": "6339,6392",
-                        "startColumns": "4,4",
-                        "startOffsets": "445383,448759",
-                        "endLines": "6339,6394",
-                        "endColumns": "25,12",
-                        "endOffsets": "445404,448883"
-                    }
-                },
-                {
                     "source": "C:\\Users\\PC\\.gradle\\caches\\transforms-4\\94c49bf7ae8de7684c58511fc320f6da\\transformed\\fragment-1.3.6\\res\\values\\values.xml",
                     "from": {
                         "startLines": "2,3,4,5,10",
@@ -403,6 +384,25 @@
                         "startOffsets": "120111",
                         "endColumns": "49",
                         "endOffsets": "120156"
+                    }
+                },
+                {
+                    "source": "D:\\VIBE CODING\\HOME-APP\\android-app-skeleton\\app\\src\\main\\res\\values\\themes.xml",
+                    "from": {
+                        "startLines": "5,2",
+                        "startColumns": "4,4",
+                        "startOffsets": "236,104",
+                        "endLines": "5,4",
+                        "endColumns": "26,12",
+                        "endOffsets": "258,230"
+                    },
+                    "to": {
+                        "startLines": "6339,6392",
+                        "startColumns": "4,4",
+                        "startOffsets": "445383,448759",
+                        "endLines": "6339,6394",
+                        "endColumns": "25,12",
+                        "endOffsets": "445404,448883"
                     }
                 },
                 {

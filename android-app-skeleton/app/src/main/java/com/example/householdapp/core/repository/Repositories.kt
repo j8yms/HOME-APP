@@ -1,5 +1,6 @@
 package com.example.householdapp.core.repository
 
+import java.util.UUID
 import com.example.householdapp.core.model.Task
 import com.example.householdapp.core.model.UserProfile
 import com.example.householdapp.core.network.AddTransactionRequest
@@ -7,6 +8,7 @@ import com.example.householdapp.core.network.ApiFactory
 import com.example.householdapp.core.network.BootstrapRequest
 import com.example.householdapp.core.network.CompleteTaskRequest
 import com.example.householdapp.core.network.ClaimTaskRequest
+import com.example.householdapp.core.network.DashboardResponse
 import com.example.householdapp.core.network.CreateBillRequest
 import com.example.householdapp.core.network.CreateBudgetRequest
 import com.example.householdapp.core.network.CreateHouseholdLogRequest
@@ -34,16 +36,17 @@ class AuthRepository {
     private val api = ApiFactory.create()
 
     suspend fun bootstrap(email: String) =
-        api.bootstrap(request = BootstrapRequest(googleEmail = email))
+        api.bootstrap(googleEmail = email)
 
     suspend fun bootstrapDevice(deviceId: String) =
-        api.bootstrapDevice(request = DeviceBootstrapRequest(deviceId = deviceId))
+        api.bootstrapDevice(deviceId = deviceId)
 }
 
 class DashboardRepository {
     private val api = ApiFactory.create()
 
-    suspend fun getDashboard(userId: String) = api.getDashboard(userId = userId)
+    suspend fun getDashboard(userId: String) =
+        api.getDashboard(userId = userId)
 }
 
 class TaskRepository {
@@ -157,7 +160,8 @@ class FinanceRepository {
                 category = category,
                 amount = amount,
                 wallet = wallet,
-                userId = userId
+                userId = userId,
+                requestId = UUID.randomUUID().toString()
             )
         )
 

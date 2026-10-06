@@ -133,6 +133,30 @@ function todayDateString() {
   return Utilities.formatDate(new Date(), 'UTC', 'yyyy-MM-dd');
 }
 
+function getHouseholdTimezone(householdId) {
+  var config = getSheetData(SHEET_NAMES.CONFIG);
+  var timezonePair = config.find(function(row) {
+    return row.key === 'household_timezone';
+  });
+  if (timezonePair && timezonePair.value) {
+    return timezonePair.value;
+  }
+  // Default to Africa/Nairobi for household operations
+  return 'Africa/Nairobi';
+}
+
+function todayDateStringByHousehold(householdId) {
+  var timezone = getHouseholdTimezone(householdId);
+  return Utilities.formatDate(new Date(), timezone, 'yyyy-MM-dd');
+}
+
+function addDays(dateString, days) {
+  if (!dateString) return '';
+  var date = new Date(Date.parse(dateString));
+  date.setUTCDate(date.getUTCDate() + days);
+  return Utilities.formatDate(date, 'UTC', 'yyyy-MM-dd');
+}
+
 function toSheetValue(value) {
   if (value === undefined || value === null) {
     return '';

@@ -28,6 +28,7 @@ data class Task(
     val priority: String,
     val dueDate: String?,
     val repeatRule: String?,
+    val recurrenceId: String = "",  // series_id for recurring task groups
     val xpReward: Int,
     val coinReward: Int,
     val streakEligible: Boolean,
@@ -59,7 +60,28 @@ data class DashboardData(
     val partner: UserProfile? = null,
     val tasksDueToday: List<Task> = emptyList(),
     val overdueTasks: List<Task> = emptyList(),
-    val couplesStreak: CouplesStreak = CouplesStreak()
+    val couplesStreak: CouplesStreak = CouplesStreak(),
+
+    // A. Greeting
+    val greeting: GreetingData = GreetingData(),
+
+    // B. TODAY
+    val today: TodayData = TodayData(),
+
+    // C. MONEY
+    val money: MoneyData = MoneyData(),
+
+    // D. HOUSEHOLD
+    val household: HouseholdData = HouseholdData(),
+
+    // E. GOALS
+    val goals: GoalsData = GoalsData(),
+
+    // F. ACTIVITY
+    val activity: ActivityFeed = ActivityFeed(),
+
+    // G. GAMIFICATION (secondary)
+    val gamification: GamificationData = GamificationData()
 )
 
 data class HouseholdLogEntry(
@@ -245,4 +267,107 @@ data class Budget(
     val budgetLimit: Double = 0.0,
     val progressPct: Int = 0,
     val status: String = "active"
+)
+
+// ===== Dashboard Section Models =====
+
+data class GreetingData(
+    val currentUser: UserProfile? = null,
+    val date: String = "",
+    val householdName: String = ""
+)
+
+data class TodayData(
+    val tasksDueToday: List<Task> = emptyList(),
+    val overdueTasks: List<Task> = emptyList(),
+    val todayBills: List<Bill> = emptyList(),
+    val upcomingBills: List<Bill> = emptyList(),
+    val overdueBills: List<Bill> = emptyList(),
+    val todayEvents: List<Event> = emptyList(),
+    val quickActions: QuickActionsData = QuickActionsData()
+)
+
+data class QuickActionsData(
+    val incomeThisMonth: Double = 0.0,
+    val expensesThisMonth: Double = 0.0,
+    val openShoppingItems: List<ShoppingItem> = emptyList(),
+    val remainingBudget: Double = 0.0
+)
+
+data class MoneyData(
+    val totalBalance: Double = 0.0,
+    val accountBreakdown: Map<String, Double> = emptyMap(),
+    val incomeThisMonth: Double = 0.0,
+    val expensesThisMonth: Double = 0.0,
+    val remainingBudget: Double = 0.0,
+    val subscriptionTotalMonthly: Double = 0.0,
+    val upcomingSubscriptions: List<SubscriptionInfo> = emptyList()
+)
+
+data class HouseholdData(
+    val openTasks: List<Task> = emptyList(),
+    val completedTasks: List<Task> = emptyList(),
+    val maintenanceIssues: List<MaintenanceItem> = emptyList(),
+    val shoppingItems: List<ShoppingItem> = emptyList(),
+    val importantReminders: List<Reminder> = emptyList()
+)
+
+data class GoalsData(
+    val savingsGoals: List<SavingsGoal> = emptyList(),
+    val monthlyTargets: Map<String, Double> = emptyMap()
+)
+
+data class ActivityEntry(
+    val title: String,
+    val description: String,
+    val type: String, // "task", "bill", "log", "transaction"
+    val timestamp: String
+)
+
+data class ActivityFeed(
+    val entries: List<ActivityEntry> = emptyList()
+)
+
+data class GamificationData(
+    val xpTotal: Int = 0,
+    val level: Int = 1,
+    val coinsTotal: Int = 0,
+    val currentStreak: Int = 0,
+    val longestStreak: Int = 0
+)
+
+data class SavingsGoal(
+    val goalId: String,
+    val name: String,
+    val targetAmount: Double,
+    val currentAmount: Double,
+    val currency: String,
+    val deadline: String,
+    val priority: String,
+    val status: String
+)
+
+// Reminder and Maintenance models
+
+data class Reminder(
+    val title: String,
+    val description: String,
+    val priority: String = "medium"
+)
+
+data class MaintenanceItem(
+    val maintenanceId: String,
+    val title: String,
+    val category: String,
+    val dueDate: String,
+    val priority: String,
+    val status: String = "open"
+)
+
+data class Event(
+    val eventId: String = "",
+    val title: String = "",
+    val category: String = "",
+    val start: String = "",
+    val description: String = ""
 )
