@@ -11,7 +11,20 @@ var SHEET_NAMES = {
   MONEY_TRANSACTIONS: 'Money_Transactions',
   BILLS: 'Bills',
   SHOPPING_ITEMS: 'Shopping_Items',
-  REFERENCE_LIBRARY: 'Reference_Library'
+  REFERENCE_LIBRARY: 'Reference_Library',
+  EVENTS: 'Events',
+  MAINTENANCE: 'Maintenance',
+  SUBSCRIPTIONS: 'Subscriptions',
+  SAVINGS_GOALS: 'Savings_Goals',
+  BUDGETS: 'Budgets',
+  NET_WORTH_SNAPSHOTS: 'Net_Worth_Snapshots',
+  TRANSFERS: 'Transfers',
+  ASSETS: 'Assets',
+  LIABILITIES: 'Liabilities',
+  INVESTMENTS: 'Investments',
+  INVESTMENT_ACCOUNTS: 'Investment_Accounts',
+  TRADE_JOURNAL: 'Trade_Journal',
+  WEALTH_MILESTONES: 'Wealth_Milestones'
 };
 
 function getSpreadsheet() {
@@ -30,9 +43,17 @@ function getSpreadsheet() {
 }
 
 function getSheet(sheetName) {
-  var sheet = getSpreadsheet().getSheetByName(sheetName);
+  if (!sheetName || typeof sheetName !== 'string' || sheetName.trim() === '') {
+    throw new Error('Invalid sheet access: sheetName parameter is missing or undefined. Check SHEET_NAMES constant definitions.');
+  }
+  var spreadsheet = getSpreadsheet();
+  var sheet = spreadsheet.getSheetByName(sheetName);
   if (!sheet) {
-    throw new Error('Missing required sheet: ' + sheetName);
+    try {
+      sheet = spreadsheet.insertSheet(sheetName);
+    } catch (e) {
+      throw new Error('Missing required sheet: "' + sheetName + '" and unable to auto-create: ' + e.message);
+    }
   }
   return sheet;
 }

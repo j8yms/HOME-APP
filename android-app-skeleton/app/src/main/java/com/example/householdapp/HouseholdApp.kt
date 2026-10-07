@@ -2,19 +2,12 @@ package com.example.householdapp
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Rule
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CardGiftcard
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.EventNote
-import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MonetizationOn
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PieChart
-import androidx.compose.material.icons.filled.ReceiptLong
-import androidx.compose.material.icons.filled.Rule
-import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -60,19 +53,12 @@ fun HouseholdApp() {
 
     data class NavItem(val route: AppRoute, val icon: ImageVector)
 
-    val destinations = listOf(
+    val primaryDestinations = listOf(
         NavItem(AppRoute.Dashboard, Icons.Filled.Home),
-        NavItem(AppRoute.Tasks, Icons.Filled.Rule),
-        NavItem(AppRoute.Workouts, Icons.Filled.FitnessCenter),
-        NavItem(AppRoute.Rewards, Icons.Filled.CardGiftcard),
+        NavItem(AppRoute.Wealth, Icons.Filled.TrendingUp),
+        NavItem(AppRoute.Tasks, Icons.AutoMirrored.Filled.Rule),
         NavItem(AppRoute.Money, Icons.Filled.MonetizationOn),
-        NavItem(AppRoute.ActivityFeed, Icons.Filled.History),
-        NavItem(AppRoute.Profile, Icons.Filled.Person),
-        NavItem(AppRoute.Analytics, Icons.Filled.PieChart),
-        NavItem(AppRoute.Ledger, Icons.Filled.ReceiptLong),
-        NavItem(AppRoute.Budgets, Icons.Filled.DateRange),
-        NavItem(AppRoute.Subscriptions, Icons.Filled.EventNote),
-        NavItem(AppRoute.Transfers, Icons.Filled.SwapHoriz)
+        NavItem(AppRoute.More, Icons.Filled.MoreHoriz)
     )
 
     val showBottomBar = currentRoute != AppRoute.Auth.route
@@ -104,13 +90,17 @@ fun HouseholdApp() {
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                         tonalElevation = 0.dp
                     ) {
-                        destinations.forEach { item ->
+                        primaryDestinations.forEach { item ->
                             NavigationBarItem(
                                 selected = currentRoute == item.route.route,
                                 onClick = {
                                     if (currentRoute != item.route.route) {
                                         navController.navigate(item.route.route) {
+                                            popUpTo(AppRoute.Dashboard.route) {
+                                                saveState = true
+                                            }
                                             launchSingleTop = true
+                                            restoreState = true
                                         }
                                     }
                                 },

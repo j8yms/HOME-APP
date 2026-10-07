@@ -17,19 +17,23 @@ import com.example.householdapp.finance.LedgerScreen
 import com.example.householdapp.finance.SubscriptionsScreen
 import com.example.householdapp.finance.TransfersScreen
 import com.example.householdapp.householdlog.HouseholdLogScreen
+import com.example.householdapp.more.MoreScreen
 import com.example.householdapp.profile.ProfileScreen
 import com.example.householdapp.reference.ReferenceScreen
 import com.example.householdapp.rewards.RewardsScreen
 import com.example.householdapp.tasks.TasksScreen
+import com.example.householdapp.wealth.WealthScreen
 import com.example.householdapp.workouts.WorkoutsScreen
 
 sealed class AppRoute(val route: String, val label: String) {
     data object Auth : AppRoute("auth", "Auth")
-    data object Dashboard : AppRoute("dashboard", "Dashboard")
+    data object Dashboard : AppRoute("dashboard", "Home")
+    data object Wealth : AppRoute("wealth", "Wealth")
     data object Tasks : AppRoute("tasks", "Tasks")
+    data object Money : AppRoute("money", "Money")
+    data object More : AppRoute("more", "More")
     data object Workouts : AppRoute("workouts", "Workouts")
     data object Rewards : AppRoute("rewards", "Rewards")
-    data object Money : AppRoute("money", "Money")
     data object Analytics : AppRoute("analytics", "Analytics")
     data object Ledger : AppRoute("ledger", "Ledger")
     data object Budgets : AppRoute("budgets", "Budgets")
@@ -64,13 +68,18 @@ fun AppNavGraph(
                 }
             )
         }
-        composable(AppRoute.Dashboard.route) {
-            DashboardScreen()
-        }
+        composable(AppRoute.Dashboard.route) { DashboardScreen() }
+        composable(AppRoute.Wealth.route) { WealthScreen() }
         composable(AppRoute.Tasks.route) { TasksScreen() }
+        composable(AppRoute.Money.route) { FinanceScreen() }
+        composable(AppRoute.More.route) {
+            MoreScreen(
+                onNavigateTo = { route -> navController.navigate(route.route) },
+                onOpenReference = { category -> navController.navigate(AppRoute.Reference.withCategory(category)) }
+            )
+        }
         composable(AppRoute.Workouts.route) { WorkoutsScreen() }
         composable(AppRoute.Rewards.route) { RewardsScreen() }
-        composable(AppRoute.Money.route) { FinanceScreen() }
         composable(AppRoute.Analytics.route) { AnalyticsScreen() }
         composable(AppRoute.Ledger.route) { LedgerScreen() }
         composable(AppRoute.Budgets.route) { BudgetsScreen() }

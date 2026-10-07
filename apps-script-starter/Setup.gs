@@ -53,6 +53,58 @@ function initializeHouseholdSpreadsheet() {
     {
       name: SHEET_NAMES.REFERENCE_LIBRARY,
       headers: ['entry_id', 'category', 'title', 'content', 'created_by_user_id', 'updated_at', 'created_at']
+    },
+    {
+      name: SHEET_NAMES.EVENTS,
+      headers: ['event_id', 'title', 'category', 'start', 'end', 'description', 'created_by_user_id', 'created_at']
+    },
+    {
+      name: SHEET_NAMES.MAINTENANCE,
+      headers: ['maintenance_id', 'title', 'category', 'due_date', 'priority', 'status', 'assigned_to_user_id', 'created_at']
+    },
+    {
+      name: SHEET_NAMES.SUBSCRIPTIONS,
+      headers: ['subscription_id', 'service_name', 'next_renewal_date', 'billing_interval', 'termination_rule', 'is_active', 'user_id', 'created_at', 'updated_at']
+    },
+    {
+      name: SHEET_NAMES.SAVINGS_GOALS,
+      headers: ['goal_id', 'name', 'target_amount', 'current_amount', 'currency', 'deadline', 'priority', 'status', 'created_at']
+    },
+    {
+      name: SHEET_NAMES.BUDGETS,
+      headers: ['budget_id', 'user_id', 'category', 'month', 'budget_limit', 'current_spent', 'status', 'created_at']
+    },
+    {
+      name: SHEET_NAMES.NET_WORTH_SNAPSHOTS,
+      headers: ['snapshot_id', 'total_assets', 'total_liabilities', 'net_worth', 'snapshot_date', 'created_at']
+    },
+    {
+      name: SHEET_NAMES.TRANSFERS,
+      headers: ['transfer_id', 'source_account', 'destination_target', 'amount', 'direction', 'user_id', 'created_at']
+    },
+    {
+      name: SHEET_NAMES.ASSETS,
+      headers: ['asset_id', 'name', 'category', 'value', 'notes', 'updated_at']
+    },
+    {
+      name: SHEET_NAMES.LIABILITIES,
+      headers: ['liability_id', 'name', 'category', 'amount_owed', 'notes', 'updated_at']
+    },
+    {
+      name: SHEET_NAMES.INVESTMENTS,
+      headers: ['investment_id', 'name', 'type', 'amount_invested', 'current_value', 'yield_pct', 'updated_at']
+    },
+    {
+      name: SHEET_NAMES.INVESTMENT_ACCOUNTS,
+      headers: ['account_id', 'account_name', 'account_type', 'balance', 'updated_at']
+    },
+    {
+      name: SHEET_NAMES.TRADE_JOURNAL,
+      headers: ['trade_id', 'symbol', 'action', 'quantity', 'price', 'notes', 'created_at']
+    },
+    {
+      name: SHEET_NAMES.WEALTH_MILESTONES,
+      headers: ['milestone_id', 'title', 'target_amount', 'achieved', 'achieved_at', 'created_at']
     }
   ];
 
@@ -73,18 +125,12 @@ function initializeHouseholdSpreadsheet() {
 }
 
 function migrateHouseholdSpreadsheet() {
+  initializeHouseholdSpreadsheet();
   ensureColumn(SHEET_NAMES.TASKS, 'assignee_label');
   ensureColumn(SHEET_NAMES.USERS, 'household_side');
   ensureColumn(SHEET_NAMES.REWARDS_STORE, 'hide_from_partner');
   ensureColumn(SHEET_NAMES.REWARDS_STORE, 'created_by_user_id');
   ensureColumn(SHEET_NAMES.MONEY_TRANSACTIONS, 'wallet');
-  ensureSheet(
-    SHEET_NAMES.REFERENCE_LIBRARY,
-    ['entry_id', 'category', 'title', 'content', 'created_by_user_id', 'updated_at', 'created_at']
-  );
-  upsertConfig('vacation_goal', 2000);
-  upsertConfig('dream_goal', 10000);
-  upsertConfig('currency', 'USD');
 
   return { success: true, message: 'Migration applied.' };
 }
