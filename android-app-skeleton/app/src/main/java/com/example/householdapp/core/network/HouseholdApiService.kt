@@ -360,7 +360,7 @@ interface HouseholdApiService {
     ): ApiResponse<UpdateSubscriptionResponse>
 }
 
-private class JsonResponseInterceptor : Interceptor {
+internal class JsonResponseInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         val response = chain.proceed(request)
@@ -369,6 +369,11 @@ private class JsonResponseInterceptor : Interceptor {
         if (contentType.contains("text/html")) {
             val peek = try { response.peekBody(1024).string().lowercase() } catch (e: Exception) { "" }
             if (peek.contains("<!doctype") || peek.contains("<html")) {
+                // The response MUST be closed before throwing. Throwing with the
+                // exchange still open leaves OkHttp's Transmitter in a dirty state,
+                // and the next proceed() throws IllegalStateException on the OkHttp
+                // Dispatcher thread, killing the whole process.
+                response.close()
                 throw IOException("Server returned an HTML response instead of JSON. Check server deployment.")
             }
         }
@@ -386,22 +391,43 @@ private class JsonResponseInterceptor : Interceptor {
  * - Retries transient failures (connection errors, HTML error pages from the
  *   redirect hop, 408/429/5xx) with a short backoff.
  */
-private class ResilientAppsScriptInterceptor : Interceptor {
+internal class ResilientAppsScriptInterceptor : Interceptor {
     private val inFlight = Semaphore(MAX_CONCURRENT_REQUESTS)
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = withRequestId(chain.request())
-        inFlight.acquire()
+        try {
+            inFlight.acquire()
+        } catch (ie: InterruptedException) {
+            Thread.currentThread().interrupt()
+            throw IOException("Request aborted while waiting for a connection slot.")
+        }
         try {
             var attempt = 1
             while (true) {
                 if (attempt > 1) {
-                    Thread.sleep(RETRY_BACKOFF_MS * attempt)
+                    try {
+                        Thread.sleep(RETRY_BACKOFF_MS * attempt)
+                    } catch (ie: InterruptedException) {
+                        Thread.currentThread().interrupt()
+                        throw IOException("Request aborted during retry backoff.")
+                    }
                 }
                 val response = try {
                     chain.proceed(request)
                 } catch (io: IOException) {
                     if (attempt >= MAX_ATTEMPTS) throw io
+                    attempt += 1
+                    continue
+                } catch (rt: RuntimeException) {
+                    // First attempt runs unwrapped so programming errors stay
+                    // visible. On RETRY attempts a stale OkHttp internal state
+                    // must surface as IOException (handled as a network failure
+                    // upstream) instead of killing the OkHttp Dispatcher thread.
+                    if (attempt <= 1) throw rt
+                    if (attempt >= MAX_ATTEMPTS) {
+                        throw IOException("Retry attempt failed: ${rt.javaClass.simpleName}: ${rt.message}", rt)
+                    }
                     attempt += 1
                     continue
                 }
