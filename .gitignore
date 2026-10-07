@@ -1,0 +1,15 @@
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Gradle / Android build outputs
+.gradle/
+**/build/
+local.properties
+
+# Logs / scratch
+scripts/contract-run.log
+
+# Local notes
+maelezo.txt

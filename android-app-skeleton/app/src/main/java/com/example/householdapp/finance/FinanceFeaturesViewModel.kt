@@ -8,8 +8,6 @@ import com.example.householdapp.core.model.SubscriptionInfo
 import com.example.householdapp.core.network.AnalyticsResponse
 import com.example.householdapp.core.network.TransferRecord
 import com.example.householdapp.core.repository.FinanceRepository
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,34 +31,49 @@ class FinanceFeaturesViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(FinanceFeaturesUiState())
     val uiState: StateFlow<FinanceFeaturesUiState> = _uiState.asStateFlow()
 
-    fun loadAll(userId: String) {
+    private fun loadSection(
+        sectionName: String,
+        userId: String,
+        block: suspend () -> (FinanceFeaturesUiState) -> FinanceFeaturesUiState
+    ) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-            runCatching {
-                coroutineScope {
-                    val ledgerDeferred = async { repository.getLedgerEntries(userId).data?.entries ?: emptyList() }
-                    val budgetsDeferred = async { repository.listBudgets(userId).data?.budgets ?: emptyList() }
-                    val subscriptionsDeferred = async { repository.listSubscriptions(userId).data?.subscriptions ?: emptyList() }
-                    val transfersDeferred = async { repository.listTransfers(userId).data?.transfers ?: emptyList() }
-                    val analyticsDeferred = async { repository.getAnalytics(userId).data }
-                    FinanceFeaturesUiState(
+            runCatching { block() }
+                .onSuccess { transform ->
+                    _uiState.value = transform(_uiState.value).copy(isLoading = false)
+                }
+                .onFailure { throwable ->
+                    _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        ledger = ledgerDeferred.await(),
-                        budgets = budgetsDeferred.await(),
-                        subscriptions = subscriptionsDeferred.await(),
-                        transfers = transfersDeferred.await(),
-                        analytics = analyticsDeferred.await()
+                        errorMessage = throwable.message ?: "Unable to load $sectionName."
                     )
                 }
-            }.onSuccess { state ->
-                _uiState.value = state
-            }.onFailure { throwable ->
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    errorMessage = throwable.message ?: "Unable to load finance data."
-                )
-            }
         }
+    }
+
+    fun loadLedger(userId: String) = loadSection("ledger", userId) {
+        val entries = repository.getLedgerEntries(userId).data?.entries ?: emptyList()
+        return@loadSection { state: FinanceFeaturesUiState -> state.copy(ledger = entries) }
+    }
+
+    fun loadBudgets(userId: String) = loadSection("budgets", userId) {
+        val budgets = repository.listBudgets(userId).data?.budgets ?: emptyList()
+        return@loadSection { state: FinanceFeaturesUiState -> state.copy(budgets = budgets) }
+    }
+
+    fun loadSubscriptions(userId: String) = loadSection("subscriptions", userId) {
+        val subscriptions = repository.listSubscriptions(userId).data?.subscriptions ?: emptyList()
+        return@loadSection { state: FinanceFeaturesUiState -> state.copy(subscriptions = subscriptions) }
+    }
+
+    fun loadTransfers(userId: String) = loadSection("transfers", userId) {
+        val transfers = repository.listTransfers(userId).data?.transfers ?: emptyList()
+        return@loadSection { state: FinanceFeaturesUiState -> state.copy(transfers = transfers) }
+    }
+
+    fun loadAnalytics(userId: String) = loadSection("analytics", userId) {
+        val analytics = repository.getAnalytics(userId).data
+        return@loadSection { state: FinanceFeaturesUiState -> state.copy(analytics = analytics) }
     }
 
     fun createBudget(userId: String, category: String, month: String, budgetLimit: Double, onSuccess: () -> Unit) {
@@ -79,7 +92,7 @@ class FinanceFeaturesViewModel : ViewModel() {
                         isSubmitting = false,
                         successMessage = "Budget created."
                     )
-                    loadAll(userId)
+                    loadBudgets(userId)
                     onSuccess()
                 }
                 .onFailure { throwable ->
@@ -107,7 +120,7 @@ class FinanceFeaturesViewModel : ViewModel() {
                         isSubmitting = false,
                         successMessage = "Subscription added."
                     )
-                    loadAll(userId)
+                    loadSubscriptions(userId)
                     onSuccess()
                 }
                 .onFailure { throwable ->
@@ -135,7 +148,7 @@ class FinanceFeaturesViewModel : ViewModel() {
                         isSubmitting = false,
                         successMessage = "Subscription updated."
                     )
-                    loadAll(userId)
+                    loadSubscriptions(userId)
                 }
                 .onFailure { throwable ->
                     _uiState.value = _uiState.value.copy(
@@ -167,7 +180,7 @@ class FinanceFeaturesViewModel : ViewModel() {
                         isSubmitting = false,
                         successMessage = "Transfer of ${response.data.transfer.amount} completed."
                     )
-                    loadAll(userId)
+                    loadTransfers(userId)
                     onSuccess()
                 }
                 .onFailure { throwable ->

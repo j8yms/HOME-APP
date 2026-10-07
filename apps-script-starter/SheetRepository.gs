@@ -24,14 +24,46 @@ var SHEET_NAMES = {
   INVESTMENTS: 'Investments',
   INVESTMENT_ACCOUNTS: 'Investment_Accounts',
   TRADE_JOURNAL: 'Trade_Journal',
-  WEALTH_MILESTONES: 'Wealth_Milestones'
+  WEALTH_MILESTONES: 'Wealth_Milestones',
+  INVESTMENT_TRANSACTIONS: 'Investment_Transactions',
+  PASSIVE_INCOME: 'Passive_Income',
+  PROP_ACCOUNTS: 'Prop_Accounts',
+  PROP_PAYOUTS: 'Prop_Payouts',
+  REQUEST_LOG: 'Request_Log'
 };
 
+// Per-execution caches. Every Apps Script execution is a fresh process,
+// so these never go stale across requests - only within one request,
+// which is why every write invalidates the affected sheet.
+var SHEET_CACHE = {
+  spreadsheet: null,
+  sheets: {},
+  data: {},
+  headers: {}
+};
+
+function invalidateSheetCache(sheetName) {
+  if (sheetName) {
+    delete SHEET_CACHE.data[sheetName];
+    delete SHEET_CACHE.headers[sheetName];
+    delete SHEET_CACHE.sheets[sheetName];
+    return;
+  }
+  SHEET_CACHE.data = {};
+  SHEET_CACHE.headers = {};
+  SHEET_CACHE.sheets = {};
+}
+
 function getSpreadsheet() {
+  if (SHEET_CACHE.spreadsheet) {
+    return SHEET_CACHE.spreadsheet;
+  }
+
   var spreadsheetId = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
 
   if (spreadsheetId) {
-    return SpreadsheetApp.openById(spreadsheetId);
+    SHEET_CACHE.spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    return SHEET_CACHE.spreadsheet;
   }
 
   var active = SpreadsheetApp.getActiveSpreadsheet();
@@ -39,6 +71,7 @@ function getSpreadsheet() {
     throw new Error('No spreadsheet available. Set script property SPREADSHEET_ID or use a bound script.');
   }
 
+  SHEET_CACHE.spreadsheet = active;
   return active;
 }
 
@@ -46,6 +79,11 @@ function getSheet(sheetName) {
   if (!sheetName || typeof sheetName !== 'string' || sheetName.trim() === '') {
     throw new Error('Invalid sheet access: sheetName parameter is missing or undefined. Check SHEET_NAMES constant definitions.');
   }
+
+  if (SHEET_CACHE.sheets[sheetName]) {
+    return SHEET_CACHE.sheets[sheetName];
+  }
+
   var spreadsheet = getSpreadsheet();
   var sheet = spreadsheet.getSheetByName(sheetName);
   if (!sheet) {
@@ -55,28 +93,36 @@ function getSheet(sheetName) {
       throw new Error('Missing required sheet: "' + sheetName + '" and unable to auto-create: ' + e.message);
     }
   }
+
+  SHEET_CACHE.sheets[sheetName] = sheet;
   return sheet;
 }
 
 function getSheetData(sheetName) {
+  if (SHEET_CACHE.data[sheetName]) {
+    return SHEET_CACHE.data[sheetName];
+  }
+
   var sheet = getSheet(sheetName);
   var values = sheet.getDataRange().getValues();
 
-  if (!values || values.length < 2) {
-    return [];
+  var rows = [];
+  if (values && values.length >= 2) {
+    var headers = values[0];
+    rows = values.slice(1).filter(function(row) {
+      return row.some(function(cell) { return cell !== ''; });
+    }).map(function(row, index) {
+      var obj = {};
+      headers.forEach(function(header, colIndex) {
+        obj[header] = row[colIndex];
+      });
+      obj.__rowIndex = index + 2;
+      return obj;
+    });
   }
 
-  var headers = values[0];
-  return values.slice(1).filter(function(row) {
-    return row.some(function(cell) { return cell !== ''; });
-  }).map(function(row, index) {
-    var obj = {};
-    headers.forEach(function(header, colIndex) {
-      obj[header] = row[colIndex];
-    });
-    obj.__rowIndex = index + 2;
-    return obj;
-  });
+  SHEET_CACHE.data[sheetName] = rows;
+  return rows;
 }
 
 function appendRow(sheetName, object, headers) {
@@ -86,6 +132,7 @@ function appendRow(sheetName, object, headers) {
     return toSheetValue(object[header]);
   });
   sheet.appendRow(row);
+  invalidateSheetCache(sheetName);
 }
 
 function updateRowByIndex(sheetName, rowIndex, object, headers) {
@@ -95,11 +142,19 @@ function updateRowByIndex(sheetName, rowIndex, object, headers) {
     return toSheetValue(object[header]);
   });
   sheet.getRange(rowIndex, 1, 1, row.length).setValues([row]);
+  invalidateSheetCache(sheetName);
 }
 
 function getHeaders(sheetName) {
+  if (SHEET_CACHE.headers[sheetName]) {
+    return SHEET_CACHE.headers[sheetName];
+  }
+
   var sheet = getSheet(sheetName);
-  return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var lastColumn = Math.max(sheet.getLastColumn(), 1);
+  var headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+  SHEET_CACHE.headers[sheetName] = headers;
+  return headers;
 }
 
 function findOneBy(sheetName, predicate) {
@@ -146,7 +201,7 @@ function getConfigString(key, defaultValue) {
 }
 
 function generateId(prefix, sheetName) {
-  var rows = getSheetData(sheetName);
+  // No sheet read required: UUIDs are unique without counting existing rows.
   return prefix + '_' + Utilities.getUuid().replace(/-/g, '').slice(0, 10);
 }
 
@@ -155,15 +210,8 @@ function todayDateString() {
 }
 
 function getHouseholdTimezone(householdId) {
-  var config = getSheetData(SHEET_NAMES.CONFIG);
-  var timezonePair = config.find(function(row) {
-    return row.key === 'household_timezone';
-  });
-  if (timezonePair && timezonePair.value) {
-    return timezonePair.value;
-  }
   // Default to Africa/Nairobi for household operations
-  return 'Africa/Nairobi';
+  return getConfigString('household_timezone', 'Africa/Nairobi');
 }
 
 function todayDateStringByHousehold(householdId) {
@@ -178,6 +226,20 @@ function addDays(dateString, days) {
   return Utilities.formatDate(date, 'UTC', 'yyyy-MM-dd');
 }
 
+// Household scoping helper.
+// Empty household ids (legacy rows, single-household deployments) match any
+// household, so data written before household scoping stays visible.
+function rowMatchesHousehold(row, householdId) {
+  if (!householdId) {
+    return true;
+  }
+  var rowHousehold = normalizeString(row && row.household_id);
+  if (!rowHousehold) {
+    return true;
+  }
+  return rowHousehold === householdId;
+}
+
 function toSheetValue(value) {
   if (value === undefined || value === null) {
     return '';
@@ -185,11 +247,22 @@ function toSheetValue(value) {
   if (typeof value === 'boolean') {
     return value ? 'true' : 'false';
   }
+  if (value instanceof Date) {
+    return value;
+  }
   return value;
 }
 
 function toBoolean(value) {
+  if (typeof value === 'boolean') {
+    return value;
+  }
   return String(value).toLowerCase() === 'true';
+}
+
+function toDouble(value, fallback) {
+  var parsed = Number(value);
+  return isNaN(parsed) ? (fallback || 0) : parsed;
 }
 
 function toInt(value, fallback) {

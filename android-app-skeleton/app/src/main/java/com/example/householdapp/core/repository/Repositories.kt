@@ -19,10 +19,13 @@ import com.example.householdapp.core.network.CreateSubscriptionRequest
 import com.example.householdapp.core.network.CreateTaskRequest
 import com.example.householdapp.core.network.DeleteReferenceEntryRequest
 import com.example.householdapp.core.network.DeleteTaskRequest
+import com.example.householdapp.core.network.DeleteWealthItemRequest
 import com.example.householdapp.core.network.DeviceBootstrapRequest
 import com.example.householdapp.core.network.ExecuteTransferRequest
 import com.example.householdapp.core.network.LogWorkoutRequest
 import com.example.householdapp.core.network.RedeemRewardRequest
+import com.example.householdapp.core.network.SaveFinancialFreedomRequest
+import com.example.householdapp.core.network.SaveWealthItemRequest
 import com.example.householdapp.core.network.SetFinanceCurrencyRequest
 import com.example.householdapp.core.network.SetFinanceGoalsRequest
 import com.example.householdapp.core.network.UpdateBillRequest
@@ -31,6 +34,7 @@ import com.example.householdapp.core.network.UpdateShoppingItemRequest
 import com.example.householdapp.core.network.UpdateSubscriptionRequest
 import com.example.householdapp.core.network.UpdateTaskRequest
 import com.example.householdapp.core.network.UpdateProfileRequest
+import com.example.householdapp.core.network.WealthItem
 
 class AuthRepository {
     private val api = ApiFactory.create()
@@ -273,6 +277,40 @@ class FinanceRepository {
                 isActive = isActive
             )
         )
+}
+
+class WealthRepository {
+    private val api = ApiFactory.create()
+
+    suspend fun getSummary(userId: String) = api.getWealthSummary(userId = userId)
+
+    suspend fun listSection(userId: String, section: String, investmentId: String = "") =
+        api.listWealthSection(section = section, userId = userId, investmentId = investmentId)
+
+    suspend fun saveItem(userId: String, section: String, item: WealthItem) =
+        api.saveWealthItem(
+            request = SaveWealthItemRequest(
+                section = section,
+                item = item,
+                userId = userId
+            )
+        )
+
+    suspend fun deleteItem(userId: String, section: String, id: String) =
+        api.deleteWealthItem(
+            request = DeleteWealthItemRequest(
+                section = section,
+                id = id,
+                userId = userId
+            )
+        )
+
+    suspend fun getHistory(userId: String) = api.getWealthHistory(userId = userId)
+
+    suspend fun getFreedom() = api.getFinancialFreedom()
+
+    suspend fun saveFreedom(request: SaveFinancialFreedomRequest) =
+        api.saveFinancialFreedom(request = request)
 }
 
 class ReferenceRepository {

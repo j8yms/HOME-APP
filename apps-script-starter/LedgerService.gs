@@ -38,6 +38,7 @@ function mapLedgerEntry(row) {
   return {
     ledgerId: row.ledger_id,
     sourceType: row.source_type || '',
+    sourceId: row.source_id || '',
     actionType: row.action_type || '',
     xpDelta: toInt(row.xp_delta),
     coinDelta: toInt(row.coin_delta),

@@ -13,9 +13,9 @@ function bootstrapUser(payload) {
     };
   }
 
-  var partner = findManyBy(SHEET_NAMES.USERS, function(row) {
-    return toBoolean(row.is_active) && row.user_id !== user.user_id;
-  })[0] || null;
+  user = ensureUserHousehold(user);
+
+  var partner = findActivePartner(user);
 
   return {
     authorized: true,
@@ -45,6 +45,7 @@ function bootstrapDevice(payload) {
 
     if (openSlot) {
       openSlot.device_id = deviceId;
+      openSlot.household_id = ensureHouseholdId();
       openSlot.updated_at = nowIso();
       if (!normalizeString(openSlot.display_name)) {
         openSlot.display_name = 'Home Member ' + String(Math.min(activeUsers.indexOf(openSlot) + 1, 2));
@@ -62,6 +63,7 @@ function bootstrapDevice(payload) {
         photo_url: '',
         role: 'member',
         household_side: '',
+        household_id: ensureHouseholdId(),
         xp_total: 0,
         level: 1,
         coins_total: 0,
@@ -80,17 +82,54 @@ function bootstrapDevice(payload) {
         reason: 'This household already has two registered devices.'
       };
     }
+  } else {
+    user = ensureUserHousehold(user);
   }
 
-  var partner = findManyBy(SHEET_NAMES.USERS, function(row) {
-    return toBoolean(row.is_active) && row.user_id !== user.user_id;
-  })[0] || null;
+  var partner = findActivePartner(user);
 
   return {
     authorized: true,
     user: mapUserSummary(user),
     partner: partner ? mapUserSummary(partner) : null
   };
+}
+
+function ensureHouseholdId() {
+  var configured = normalizeString(getConfigString('household_id', ''));
+  if (configured) return configured;
+
+  var withHousehold = findManyBy(SHEET_NAMES.USERS, function(row) {
+    return toBoolean(row.is_active) && normalizeString(row.household_id);
+  })[0];
+  if (withHousehold) {
+    var inherited = normalizeString(withHousehold.household_id);
+    upsertConfig('household_id', inherited);
+    return inherited;
+  }
+
+  var generated = 'hh_' + Utilities.getUuid().replace(/-/g, '').substring(0, 10).toUpperCase();
+  upsertConfig('household_id', generated);
+  return generated;
+}
+
+function ensureUserHousehold(user) {
+  if (!user || normalizeString(user.household_id)) return user;
+  user.household_id = ensureHouseholdId();
+  user.updated_at = nowIso();
+  updateRowByIndex(SHEET_NAMES.USERS, user.__rowIndex, user);
+  return user;
+}
+
+function findActivePartner(user) {
+  if (!user) return null;
+  var householdId = normalizeString(user.household_id);
+  return findManyBy(SHEET_NAMES.USERS, function(row) {
+    if (!toBoolean(row.is_active) || row.user_id === user.user_id) return false;
+    if (!householdId) return true;
+    var rowHousehold = normalizeString(row.household_id);
+    return !rowHousehold || rowHousehold === householdId;
+  })[0] || null;
 }
 
 function getActiveUserByEmail(email) {
@@ -148,6 +187,7 @@ function mapUserSummary(row) {
     photoUrl: row.photo_url || '',
     role: row.role,
     householdSide: row.household_side || '',
+    householdId: row.household_id || '',
     xpTotal: toInt(row.xp_total),
     level: toInt(row.level, 1),
     coinsTotal: toInt(row.coins_total),

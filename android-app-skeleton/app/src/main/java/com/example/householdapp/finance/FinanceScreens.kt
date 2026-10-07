@@ -143,14 +143,14 @@ fun AnalyticsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val userId = currentUserId()
 
-    LaunchedEffect(userId) { if (userId.isNotBlank()) viewModel.loadAll(userId) }
+    LaunchedEffect(userId) { if (userId.isNotBlank()) viewModel.loadAnalytics(userId) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         FinanceRefreshHeader(
             title = "Analytics",
             subtitle = "Category spending insights",
             isLoading = uiState.isLoading,
-            onRefresh = { if (userId.isNotBlank()) viewModel.loadAll(userId) }
+            onRefresh = { if (userId.isNotBlank()) viewModel.loadAnalytics(userId) }
         )
         FinanceStateMessages(uiState.errorMessage, uiState.successMessage)
 
@@ -270,14 +270,14 @@ fun LedgerScreen(
     val uiState by viewModel.uiState.collectAsState()
     val userId = currentUserId()
 
-    LaunchedEffect(userId) { if (userId.isNotBlank()) viewModel.loadAll(userId) }
+    LaunchedEffect(userId) { if (userId.isNotBlank()) viewModel.loadLedger(userId) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         FinanceRefreshHeader(
             title = "Ledger",
             subtitle = "Household money timeline",
             isLoading = uiState.isLoading,
-            onRefresh = { if (userId.isNotBlank()) viewModel.loadAll(userId) }
+            onRefresh = { if (userId.isNotBlank()) viewModel.loadLedger(userId) }
         )
         FinanceStateMessages(uiState.errorMessage, uiState.successMessage)
 
@@ -362,14 +362,14 @@ fun BudgetsScreen(
     val userId = currentUserId()
     var showAddDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(userId) { if (userId.isNotBlank()) viewModel.loadAll(userId) }
+    LaunchedEffect(userId) { if (userId.isNotBlank()) viewModel.loadBudgets(userId) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         FinanceRefreshHeader(
             title = "Budgets",
             subtitle = "Envelope budgeting tracking",
             isLoading = uiState.isLoading,
-            onRefresh = { if (userId.isNotBlank()) viewModel.loadAll(userId) }
+            onRefresh = { if (userId.isNotBlank()) viewModel.loadBudgets(userId) }
         )
         FinanceStateMessages(uiState.errorMessage, uiState.successMessage)
 
@@ -538,14 +538,14 @@ fun SubscriptionsScreen(
     val userId = currentUserId()
     var showAddDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(userId) { if (userId.isNotBlank()) viewModel.loadAll(userId) }
+    LaunchedEffect(userId) { if (userId.isNotBlank()) viewModel.loadSubscriptions(userId) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         FinanceRefreshHeader(
             title = "Subscriptions",
             subtitle = "Recurring subscriptions control matrix",
             isLoading = uiState.isLoading,
-            onRefresh = { if (userId.isNotBlank()) viewModel.loadAll(userId) }
+            onRefresh = { if (userId.isNotBlank()) viewModel.loadSubscriptions(userId) }
         )
         FinanceStateMessages(uiState.errorMessage, uiState.successMessage)
 
@@ -745,14 +745,14 @@ fun TransfersScreen(
     var destinationTarget by remember { mutableStateOf("vacation") }
     var amountText by remember { mutableStateOf("") }
 
-    LaunchedEffect(userId) { if (userId.isNotBlank()) viewModel.loadAll(userId) }
+    LaunchedEffect(userId) { if (userId.isNotBlank()) viewModel.loadTransfers(userId) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         FinanceRefreshHeader(
             title = "Transfers",
             subtitle = "Move money between accounts",
             isLoading = uiState.isLoading,
-            onRefresh = { if (userId.isNotBlank()) viewModel.loadAll(userId) }
+            onRefresh = { if (userId.isNotBlank()) viewModel.loadTransfers(userId) }
         )
         FinanceStateMessages(uiState.errorMessage, uiState.successMessage)
 

@@ -79,12 +79,7 @@ fun DashboardScreen(
     val sessionState by SessionManager.sessionState.collectAsState()
     val uiState by dashboardViewModel.uiState.collectAsState()
 
-    LaunchedEffect(
-        sessionState.user?.userId,
-        sessionState.user?.xpTotal,
-        sessionState.user?.coinsTotal,
-        sessionState.user?.currentStreak
-    ) {
+    LaunchedEffect(sessionState.user?.userId) {
         sessionState.user?.userId?.let { userId ->
             dashboardViewModel.loadDashboard(userId, forceRefresh = true)
         }

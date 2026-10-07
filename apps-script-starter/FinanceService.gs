@@ -73,16 +73,17 @@ function getFinanceSummary(payload) {
 function getFinanceSummaryByHousehold(householdId) {
   var transactions = getSheetData(SHEET_NAMES.MONEY_TRANSACTIONS);
   var bills = findManyBy(SHEET_NAMES.BILLS, function(row) {
-    return row.household_id === householdId;
+    return rowMatchesHousehold(row, householdId);
   }).map(mapBill);
   var items = findManyBy(SHEET_NAMES.SHOPPING_ITEMS, function(row) {
-    return row.household_id === householdId;
+    return rowMatchesHousehold(row, householdId);
   }).map(mapShoppingItem);
 
   var balance = 0;
   var savings = 0;
   var wallets = { joint: 0, his: 0, hers: 0 };
   transactions.forEach(function(transaction) {
+    if (!rowMatchesHousehold(transaction, householdId)) return;
     var type = normalizeString(transaction.type);
     var amount = Number(transaction.amount) || 0;
     if (type === 'income') {
@@ -101,7 +102,7 @@ function getFinanceSummaryByHousehold(householdId) {
   });
 
   var mapped = transactions
-    .filter(function(t) { return t.household_id === householdId; })
+    .filter(function(t) { return rowMatchesHousehold(t, householdId); })
     .map(mapMoneyTransaction);
   mapped.sort(function(a, b) {
     return String(b.createdAt).localeCompare(String(a.createdAt));
@@ -148,8 +149,19 @@ function getConfigBoolean(key, defaultValue) {
 }
 
 function setFinanceGoals(payload) {
-  var vacationGoal = Number(payload.vacationGoal);
-  var dreamGoal = Number(payload.dreamGoal);
+  // GET (no values) returns the current goals; POST sets them.
+  var hasVacation = payload.vacationGoal !== undefined && payload.vacationGoal !== null && payload.vacationGoal !== '';
+  var hasDream = payload.dreamGoal !== undefined && payload.dreamGoal !== null && payload.dreamGoal !== '';
+
+  if (!hasVacation && !hasDream) {
+    return {
+      vacationGoal: getConfigNumber('vacation_goal', 2000),
+      dreamGoal: getConfigNumber('dream_goal', 10000)
+    };
+  }
+
+  var vacationGoal = hasVacation ? Number(payload.vacationGoal) : getConfigNumber('vacation_goal', 2000);
+  var dreamGoal = hasDream ? Number(payload.dreamGoal) : getConfigNumber('dream_goal', 10000);
 
   if (isNaN(vacationGoal) || vacationGoal < 0) {
     throw new Error('vacationGoal must be a non-negative number.');
@@ -168,6 +180,13 @@ function setFinanceGoals(payload) {
 }
 
 function setFinanceCurrency(payload) {
+  // GET (no value) returns the active currency; POST sets it.
+  if (payload.currency === undefined || payload.currency === null || payload.currency === '') {
+    return {
+      currency: getConfigString('currency', 'USD')
+    };
+  }
+
   var currency = normalizeCurrency(payload.currency);
   upsertConfig('currency', currency);
   return {
@@ -194,27 +213,26 @@ function addTransaction(payload) {
   if (!(amount > 0)) {
     throw new Error('amount must be a positive number.');
   }
-  if (!householdId) {
-    throw new Error('User not associated with a household.');
+  if (!userId) {
+    throw new Error('userId is required.');
   }
 
   // Validate amount against current household balance
   var currentBalance = getHouseholdBalance(householdId);
-  var expenseAllowed = true;
-  
+
   if (type === 'expense' || type === 'savings_deposit') {
     // For expenses and savings deposits, check that balance won't go negative
     // (overdraft is allowed only if explicitly configured)
     var overdraftAllowed = getConfigBoolean('overdraft_allowed', false);
     if (!overdraftAllowed && currentBalance < amount) {
-      throw new Error('Insufficient balance. You have KES ' + currentBalance + ' available. ' +
-          'Request amount: KES ' + amount + '.');
+      throw new Error('Insufficient balance. You have ' + formatAmountWithCurrency(currentBalance) + ' available. ' +
+          'Request amount: ' + formatAmountWithCurrency(amount) + '.');
     }
   }
 
   // Use LockService for atomic operation
   var lock = LockService.getScriptLock();
-  lock.waitLock(30);  // Wait up to 30 seconds for lock
+  lock.waitLock(30000);  // Wait up to 30 seconds for lock
 
   try {
     // Check idempotency - if a transaction with this requestId already exists, skip
@@ -250,17 +268,16 @@ function addTransaction(payload) {
       summary: getFinanceSummaryByHousehold(householdId)
     };
   } finally {
-    lock.release();
+    lock.releaseLock();
   }
 }
 
 function listBills(payload) {
   var userId = normalizeString(payload.userId);
   var householdId = getUserHouseholdId(userId);
-  var filterFn = householdId ? function(row) {
-    return row.household_id === householdId;
-  } : function() { return true; };
-  return findManyBy(SHEET_NAMES.BILLS, filterFn).map(mapBill).sort(compareBillsByDueDate);
+  return findManyBy(SHEET_NAMES.BILLS, function(row) {
+    return rowMatchesHousehold(row, householdId);
+  }).map(mapBill).sort(compareBillsByDueDate);
 }
 
 function listBudgets(payload) {
@@ -290,9 +307,6 @@ function createBill(payload) {
   }
 
   var userHouseholdId = getUserHouseholdId(createdByUserId);
-  if (!userHouseholdId) {
-    throw new Error('User not associated with a household.');
-  }
 
   var bill = {
     bill_id: generateId('b', SHEET_NAMES.BILLS),
@@ -351,7 +365,7 @@ function updateBill(payload) {
 
     // Use LockService for atomic operation
     var lock = LockService.getScriptLock();
-    lock.waitLock(30);
+    lock.waitLock(30000);
 
     try {
       // Check idempotency - if a transaction with this bill_id already exists for this date, skip
@@ -378,7 +392,7 @@ function updateBill(payload) {
       };
       appendRow(SHEET_NAMES.MONEY_TRANSACTIONS, transaction);
     } finally {
-      lock.release();
+      lock.releaseLock();
     }
   } else if (status === 'pending') {
     bill.status = 'pending';
@@ -535,7 +549,7 @@ function getHouseholdBalance(householdId) {
   var transactions = getSheetData(SHEET_NAMES.MONEY_TRANSACTIONS);
   var balance = 0;
   transactions.forEach(function(transaction) {
-    if (transaction.household_id !== householdId) return;
+    if (!rowMatchesHousehold(transaction, householdId)) return;
     var type = normalizeString(transaction.type);
     var amount = Number(transaction.amount) || 0;
     if (type === 'income') {
@@ -562,6 +576,29 @@ function normalizeCurrency(value) {
     throw new Error('currency must be one of: ' + SUPPORTED_CURRENCIES.join(', ') + '.');
   }
   return currency;
+}
+
+// Mirrors com.example.householdapp.core.model.CurrencyCatalog symbols so
+// server-generated text matches what the app renders.
+function getCurrencySymbol(code) {
+  var currency = normalizeString(code || getConfigString('currency', 'USD')).toUpperCase();
+  var symbols = {
+    USD: '$',
+    EUR: '€',
+    GBP: '£',
+    KES: 'KSh',
+    NGN: '₦',
+    CAD: 'C$',
+    AUD: 'A$',
+    JPY: '¥'
+  };
+  return symbols[currency] || currency;
+}
+
+function formatAmountWithCurrency(amount) {
+  var code = getConfigString('currency', 'USD');
+  var value = Math.round((Number(amount) || 0) * 100) / 100;
+  return getCurrencySymbol(code) + ' ' + value;
 }
 
 function mapMoneyTransaction(row) {
@@ -602,63 +639,60 @@ function mapShoppingItem(row) {
   };
 }
 
-function getHouseholdBudgets(householdId) {
+function buildBudgetExpenseMap(householdId) {
   var transactions = getSheetData(SHEET_NAMES.MONEY_TRANSACTIONS);
-  var budgets = findManyBy(SHEET_NAMES.BUDGETS, function(row) {
-    return row.household_id === householdId;
-  });
-
-  // Build a map of expenses per category per month
   var expensesByCategoryMonth = {};
   transactions.forEach(function(t) {
-    if (t.household_id !== householdId) return;
+    if (!rowMatchesHousehold(t, householdId)) return;
     if (t.type !== 'expense') return;
-    var month = t.created_at ? t.created_at.substring(0, 7) : ''; // YYYY-MM
-    var key = month + '|' + t.category;
-    if (!expensesByCategoryMonth[key]) {
-      expensesByCategoryMonth[key] = 0;
-    }
-    expensesByCategoryMonth[key] += Number(t.amount) || 0;
+    var month = t.created_at ? String(t.created_at).substring(0, 7) : ''; // YYYY-MM
+    var key = month + '|' + normalizeString(t.category);
+    expensesByCategoryMonth[key] = (expensesByCategoryMonth[key] || 0) + (Number(t.amount) || 0);
   });
+  return expensesByCategoryMonth;
+}
 
-  // Map budgets with auto-calculated currentSpent
-  var result = [];
-  budgets.forEach(function(budget) {
-    var month = budget.month;
-    var category = budget.category;
-    var budgetLimit = budget.budgetLimit;
-    var currentSpent = 0;
-    var key = month + '|' + category;
-    if (expensesByCategoryMonth[key]) {
-      currentSpent = expensesByCategoryMonth[key];
-    }
-    var progressPct = budgetLimit > 0 ? Math.round((currentSpent / budgetLimit) * 100) : 0;
-    var status;
-    if (progressPct >= 100) {
-      status = 'OVER_BUDGET';
-    } else if (progressPct >= 80) {
-      status = 'WARNING';
-    } else {
-      status = 'SAFE';
-    }
-    result.push({
-      budgetId: budget.budget_id,
-      category: budget.category,
-      month: budget.month,
-      budgetLimit: budgetLimit,
-      currentSpent: Math.round(currentSpent * 100) / 100,
-      progressPct: progressPct,
-      status: status
-    });
+function mapBudgetRow(budget, expensesByCategoryMonth) {
+  var month = normalizeString(budget.month);
+  var category = normalizeString(budget.category);
+  var budgetLimit = Number(budget.budget_limit) || 0;
+  var currentSpent = expensesByCategoryMonth[month + '|' + category] || 0;
+  var progressPct = budgetLimit > 0 ? Math.round((currentSpent / budgetLimit) * 100) : 0;
+  var status;
+  if (progressPct >= 100) {
+    status = 'OVER_BUDGET';
+  } else if (progressPct >= 80) {
+    status = 'WARNING';
+  } else {
+    status = 'SAFE';
+  }
+
+  return {
+    budgetId: budget.budget_id,
+    userId: budget.user_id || budget.created_by_user_id || '',
+    category: category,
+    month: month,
+    budgetLimit: budgetLimit,
+    currentSpent: Math.round(currentSpent * 100) / 100,
+    progressPct: progressPct,
+    status: status
+  };
+}
+
+function getHouseholdBudgets(householdId) {
+  var expensesByCategoryMonth = buildBudgetExpenseMap(householdId);
+  return findManyBy(SHEET_NAMES.BUDGETS, function(row) {
+    return rowMatchesHousehold(row, householdId);
+  }).map(function(budget) {
+    return mapBudgetRow(budget, expensesByCategoryMonth);
   });
-  return result;
 }
 
 function createBudget(payload) {
   var category = normalizeString(payload.category);
   var month = normalizeString(payload.month);
   var budgetLimit = Number(payload.budgetLimit);
-  var createdByUserId = normalizeString(payload.createdByUserId);
+  var userId = normalizeString(payload.userId || payload.createdByUserId);
 
   if (!category) {
     throw new Error('category is required.');
@@ -669,28 +703,25 @@ function createBudget(payload) {
   if (!(budgetLimit > 0)) {
     throw new Error('budgetLimit must be a positive number.');
   }
-  if (!createdByUserId) {
-    throw new Error('createdByUserId is required.');
+  if (!userId) {
+    throw new Error('userId is required.');
   }
 
-  var householdId = getUserHouseholdId(createdByUserId);
-  if (!householdId) {
-    throw new Error('User not associated with a household.');
-  }
+  var householdId = getUserHouseholdId(userId);
 
-  var budgetId = generateId('b', SHEET_NAMES.BUDGETS);
   var budget = {
-    budget_id: budgetId,
+    budget_id: generateId('bud', SHEET_NAMES.BUDGETS),
     household_id: householdId,
+    user_id: userId,
     category: category,
     month: month,
-    budgetLimit: budgetLimit,
-    created_by_user_id: createdByUserId,
+    budget_limit: budgetLimit,
+    created_by_user_id: userId,
     created_at: nowIso(),
     updated_at: nowIso()
   };
   appendRow(SHEET_NAMES.BUDGETS, budget);
-  return budget;
+  return mapBudgetRow(budget, buildBudgetExpenseMap(householdId));
 }
 
 function updateBudget(payload) {
@@ -714,37 +745,23 @@ function updateBudget(payload) {
   // Household isolation
   var userId = normalizeString(payload.userId);
   var userHouseholdId = getUserHouseholdId(userId);
-  if (userHouseholdId && budget.household_id !== userHouseholdId) {
+  if (userHouseholdId && budget.household_id && budget.household_id !== userHouseholdId) {
     throw new Error('Budget does not belong to your household.');
   }
 
-  budget.budgetLimit = budgetLimit;
-  // Recalculate progress and status from the auto-calculated currentSpent
-  var currentSpent = budget.currentSpent || 0;
-  var progressPct = budget.budgetLimit > 0 ? Math.round((currentSpent / budget.budgetLimit) * 100) : 0;
-  budget.progressPct = progressPct;
-  var status;
-  if (progressPct >= 100) {
-    status = 'OVER_BUDGET';
-  } else if (progressPct >= 80) {
-    status = 'WARNING';
-  } else {
-    status = 'SAFE';
-  }
-  budget.status = status;
+  budget.budget_limit = budgetLimit;
   budget.updated_at = nowIso();
   updateRowByIndex(SHEET_NAMES.BUDGETS, budget.__rowIndex, budget);
-  return budget;
+  return mapBudgetRow(budget, buildBudgetExpenseMap(budget.household_id || userHouseholdId));
 }
 
 function createSavingsGoal(payload) {
   var name = normalizeString(payload.name);
   var targetAmount = Number(payload.targetAmount);
-  var currency = normalizeString(payload.currency) || 'KES';
+  var currency = normalizeString(payload.currency) || getConfigString('currency', 'USD');
   var deadline = normalizeString(payload.deadline);
   var priority = normalizeString(payload.priority) || 'medium';
-  var accountId = normalizeString(payload.accountId);
-  var createdByUserId = normalizeString(payload.createdByUserId);
+  var createdByUserId = normalizeString(payload.createdByUserId || payload.userId);
 
   if (!name) {
     throw new Error('name is required.');
@@ -753,21 +770,17 @@ function createSavingsGoal(payload) {
     throw new Error('targetAmount must be a positive number.');
   }
   if (!createdByUserId) {
-    throw new Error('createdByUserId is required.');
+    throw new Error('userId is required.');
   }
 
   var householdId = getUserHouseholdId(createdByUserId);
-  if (!householdId) {
-    throw new Error('User not associated with a household.');
-  }
 
-  var goalId = generateId('g', SHEET_NAMES.SAVINGS_GOALS);
   var goal = {
-    goal_id: goalId,
+    goal_id: generateId('g', SHEET_NAMES.SAVINGS_GOALS),
     household_id: householdId,
     name: name,
-    targetAmount: targetAmount,
-    currentAmount: 0,
+    target_amount: targetAmount,
+    current_amount: 0,
     currency: currency,
     deadline: deadline,
     priority: priority,
@@ -777,7 +790,7 @@ function createSavingsGoal(payload) {
     updated_at: nowIso()
   };
   appendRow(SHEET_NAMES.SAVINGS_GOALS, goal);
-  return goal;
+  return mapSavingsGoal(goal);
 }
 
 function updateSavingsGoal(payload) {
@@ -798,14 +811,14 @@ function updateSavingsGoal(payload) {
   // Household isolation
   var userId = normalizeString(payload.userId);
   var userHouseholdId = getUserHouseholdId(userId);
-  if (userHouseholdId && goal.household_id !== userHouseholdId) {
+  if (userHouseholdId && goal.household_id && goal.household_id !== userHouseholdId) {
     throw new Error('Savings goal does not belong to your household.');
   }
 
-  goal.currentAmount = currentAmount;
-  // Update status based on progress
-  if (goal.targetAmount > 0) {
-    var progress = Math.round((currentAmount / goal.targetAmount) * 100);
+  goal.current_amount = currentAmount;
+  var targetAmount = Number(goal.target_amount) || 0;
+  if (targetAmount > 0) {
+    var progress = Math.round((currentAmount / targetAmount) * 100);
     if (progress >= 100) {
       goal.status = 'achieved';
     } else if (progress >= 80) {
@@ -813,32 +826,33 @@ function updateSavingsGoal(payload) {
     } else {
       goal.status = 'active';
     }
-    goal.progressPct = progress;
   }
   goal.updated_at = nowIso();
   updateRowByIndex(SHEET_NAMES.SAVINGS_GOALS, goal.__rowIndex, goal);
-  return goal;
+  return mapSavingsGoal(goal);
 }
 
 function listSavingsGoals(payload) {
   var userId = normalizeString(payload.userId);
   var householdId = getUserHouseholdId(userId);
-  var goals = findManyBy(SHEET_NAMES.SAVINGS_GOALS, function(row) {
-    return row.household_id === householdId;
+  return findManyBy(SHEET_NAMES.SAVINGS_GOALS, function(row) {
+    return rowMatchesHousehold(row, householdId);
   }).map(mapSavingsGoal);
-  return goals;
 }
 
 function mapSavingsGoal(row) {
+  var targetAmount = Number(row.target_amount) || 0;
+  var currentAmount = Number(row.current_amount) || 0;
   return {
     goalId: row.goal_id,
     name: row.name || '',
-    targetAmount: row.targetAmount || 0,
-    currentAmount: row.currentAmount || 0,
-    currency: row.currency || 'KES',
+    targetAmount: targetAmount,
+    currentAmount: currentAmount,
+    currency: row.currency || getConfigString('currency', 'USD'),
     deadline: row.deadline || '',
     priority: row.priority || 'medium',
-    status: row.status || 'active'
+    status: row.status || 'active',
+    progressPct: targetAmount > 0 ? Math.round((currentAmount / targetAmount) * 100) : 0
   };
 }
 
@@ -847,6 +861,8 @@ function mapSavingsGoal(row) {
 function createNetWorthSnapshot(payload) {
   var householdId = normalizeString(payload.householdId);
   var netWorth = Number(payload.netWorth);
+  var totalAssets = Number(payload.totalAssets);
+  var totalLiabilities = Number(payload.totalLiabilities);
 
   if (!householdId) {
     throw new Error('householdId is required.');
@@ -855,33 +871,41 @@ function createNetWorthSnapshot(payload) {
     throw new Error('netWorth must be a number.');
   }
 
-  var snapshotId = generateId('nw', SHEET_NAMES.NET_WORTH_SNAPSHOTS);
   var snapshot = {
-    snapshot_id: snapshotId,
+    snapshot_id: generateId('nw', SHEET_NAMES.NET_WORTH_SNAPSHOTS),
     household_id: householdId,
-    netWorth: netWorth,
-    snapshotDate: nowIso(),
-    assetBreakdown: '',
-    liabilityBreakdown: ''
+    total_assets: isNaN(totalAssets) ? '' : totalAssets,
+    total_liabilities: isNaN(totalLiabilities) ? '' : totalLiabilities,
+    net_worth: netWorth,
+    snapshot_date: nowIso(),
+    created_at: nowIso()
   };
   appendRow(SHEET_NAMES.NET_WORTH_SNAPSHOTS, snapshot);
-  return snapshot;
+  return {
+    snapshotId: snapshot.snapshot_id,
+    householdId: snapshot.household_id,
+    totalAssets: totalAssets,
+    totalLiabilities: totalLiabilities,
+    netWorth: netWorth,
+    snapshotDate: snapshot.snapshot_date
+  };
 }
 
 function listNetWorthSnapshots(payload) {
   var householdId = normalizeString(payload.householdId);
   var snapshots = findManyBy(SHEET_NAMES.NET_WORTH_SNAPSHOTS, function(row) {
-    return row.household_id === householdId;
+    return rowMatchesHousehold(row, householdId);
   }).sort(function(a, b) {
-    return String(b.snapshotDate).localeCompare(String(a.snapshotDate));
+    return String(b.snapshot_date).localeCompare(String(a.snapshot_date));
   });
   return snapshots.map(function(row) {
     return {
       snapshotId: row.snapshot_id,
-      netWorth: row.netWorth,
-      snapshotDate: row.snapshotDate,
-      assetBreakdown: row.assetBreakdown || '',
-      liabilityBreakdown: row.liabilityBreakdown || ''
+      householdId: row.household_id || '',
+      totalAssets: Number(row.total_assets) || 0,
+      totalLiabilities: Number(row.total_liabilities) || 0,
+      netWorth: Number(row.net_worth) || 0,
+      snapshotDate: row.snapshot_date || row.created_at || ''
     };
   });
 }

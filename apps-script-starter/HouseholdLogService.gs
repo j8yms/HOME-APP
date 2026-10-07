@@ -54,7 +54,7 @@ function createHouseholdLog(payload) {
 
   // Use LockService for atomic operation
   var lock = LockService.getScriptLock();
-  lock.waitLock(30);  // Wait up to 30 seconds for lock
+  lock.waitLock(30000);  // Wait up to 30 seconds for lock
 
   try {
     // Check idempotency - if a log with this requestId already exists, skip
@@ -137,7 +137,7 @@ function createHouseholdLog(payload) {
       })
     };
   } finally {
-    lock.release();
+    lock.releaseLock();
   }
 }
 

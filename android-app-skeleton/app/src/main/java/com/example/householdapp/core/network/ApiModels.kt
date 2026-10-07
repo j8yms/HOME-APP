@@ -456,3 +456,149 @@ data class DeleteReferenceEntryResponse(
     val entryId: String,
     val deleted: Boolean = false
 )
+
+// ===== Wealth =====
+
+data class WealthTotals(
+    val cash: Double = 0.0,
+    val assets: Double = 0.0,
+    val investments: Double = 0.0,
+    val invested: Double = 0.0,
+    val gainLoss: Double = 0.0,
+    val liabilities: Double = 0.0,
+    val netWorth: Double = 0.0,
+    val passiveMonthly: Double = 0.0,
+    val targetPassive: Double = 0.0,
+    val passiveProgressPct: Int = 0,
+    val targetNetWorth: Double = 0.0,
+    val netWorthProgressPct: Int = 0,
+    val monthlyChange: Double = 0.0,
+    val monthlyChangePct: Double = 0.0
+)
+
+data class WealthCounts(
+    val investments: Int = 0,
+    val assets: Int = 0,
+    val liabilities: Int = 0,
+    val milestones: Int = 0,
+    val accounts: Int = 0,
+    val trades: Int = 0,
+    val income: Int = 0,
+    val contributions: Int = 0,
+    val propAccounts: Int = 0,
+    val propPayouts: Int = 0
+)
+
+data class MilestoneProgress(
+    val total: Int = 0,
+    val achieved: Int = 0
+)
+
+data class FinancialFreedom(
+    val monthlyRequirement: Double = 0.0,
+    val annualRequirement: Double = 0.0,
+    val targetPassiveIncome: Double = 0.0,
+    val targetNetWorth: Double = 0.0,
+    val targetDate: String = "",
+    val monthlyContribution: Double = 0.0,
+    val currentPassiveIncome: Double = 0.0,
+    val progressPct: Int = 0,
+    val updatedAt: String = ""
+)
+
+data class WealthSummaryResponse(
+    val currency: String = "USD",
+    val totals: WealthTotals = WealthTotals(),
+    val counts: WealthCounts = WealthCounts(),
+    val milestones: MilestoneProgress = MilestoneProgress(),
+    val freedom: FinancialFreedom = FinancialFreedom()
+)
+
+data class WealthItem(
+    val id: String = "",
+    val section: String = "",
+    val name: String = "",
+    val type: String = "",
+    val provider: String = "",
+    val reference: String = "",
+    val value: Double = 0.0,
+    val startingValue: Double = 0.0,
+    val targetValue: Double = 0.0,
+    val monthlyAmount: Double = 0.0,
+    val yieldPct: Double = 0.0,
+    val interestRate: Double = 0.0,
+    val status: String = "",
+    val notes: String = "",
+    val date: String = "",
+    val currency: String = "",
+    val achieved: Boolean = false,
+    val targetDate: String = "",
+    val isActive: Boolean = true,
+    val investmentId: String = "",
+    val transactionType: String = "",
+    val symbol: String = "",
+    val action: String = "",
+    val quantity: Double = 0.0,
+    val price: Double = 0.0,
+    val entryPrice: Double = 0.0,
+    val stopLoss: Double = 0.0,
+    val takeProfit: Double = 0.0,
+    val exitPrice: Double = 0.0,
+    val pnl: Double = 0.0,
+    val fees: Double = 0.0,
+    val strategy: String = "",
+    val accountId: String = "",
+    val createdAt: String = "",
+    val updatedAt: String = ""
+)
+
+data class WealthItemsResponse(
+    val section: String = "",
+    val items: List<WealthItem> = emptyList()
+)
+
+data class SaveWealthItemRequest(
+    val route: String = "wealth/save",
+    val section: String,
+    val item: WealthItem,
+    val userId: String
+)
+
+data class SaveWealthItemResponse(
+    val item: WealthItem
+)
+
+data class DeleteWealthItemRequest(
+    val route: String = "wealth/delete",
+    val section: String,
+    val id: String,
+    val userId: String = ""
+)
+
+data class DeleteWealthItemResponse(
+    val id: String = "",
+    val section: String = "",
+    val deleted: Boolean = false
+)
+
+data class WealthSnapshot(
+    val snapshotId: String = "",
+    val netWorth: Double = 0.0,
+    val totalAssets: Double = 0.0,
+    val totalLiabilities: Double = 0.0,
+    val snapshotDate: String = ""
+)
+
+data class WealthHistoryResponse(
+    val snapshots: List<WealthSnapshot> = emptyList()
+)
+
+data class SaveFinancialFreedomRequest(
+    val route: String = "wealth/freedom/save",
+    val monthlyRequirement: Double = 0.0,
+    val annualRequirement: Double = 0.0,
+    val targetPassiveIncome: Double = 0.0,
+    val targetNetWorth: Double = 0.0,
+    val targetDate: String = "",
+    val monthlyContribution: Double = 0.0
+)

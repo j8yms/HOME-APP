@@ -138,7 +138,7 @@ function redeemReward(payload) {
 
   // Use LockService for atomic operation
   var lock = LockService.getScriptLock();
-  lock.waitLock(30);  // Wait up to 30 seconds for lock
+  lock.waitLock(30000);  // Wait up to 30 seconds for lock
 
   try {
     // Check idempotency - if a redemption with this requestId already exists, skip
@@ -203,7 +203,7 @@ function redeemReward(payload) {
       user: Object.assign({}, mapUserSummary(updatedUser), totals)
     };
   } finally {
-    lock.release();
+    lock.releaseLock();
   }
 }
 
