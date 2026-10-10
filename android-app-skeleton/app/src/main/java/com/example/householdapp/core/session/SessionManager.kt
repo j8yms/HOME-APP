@@ -108,41 +108,61 @@ object SessionManager {
         editor.apply()
     }
 
+    private fun safeBoolean(p: SharedPreferences, key: String, default: Boolean): Boolean {
+        val value = p.all[key] ?: return default
+        return if (value is Boolean) value else default
+    }
+
+    private fun safeInt(p: SharedPreferences, key: String, default: Int): Int {
+        val value = p.all[key] ?: return default
+        return if (value is Int) value else default
+    }
+
+    private fun safeString(p: SharedPreferences, key: String, default: String): String {
+        val value = p.all[key] ?: return default
+        return if (value is String) value else default
+    }
+
+    private fun safeNullableString(p: SharedPreferences, key: String): String? {
+        val value = p.all[key] ?: return null
+        return if (value is String) value else null
+    }
+
     private fun restoreSession() {
         val p = prefs ?: return
-        val isAuthenticated = p.getBoolean(KEY_IS_AUTHENTICATED, false)
-        val userId = p.getString(KEY_USER_ID, null)
+        val isAuthenticated = safeBoolean(p, KEY_IS_AUTHENTICATED, false)
+        val userId = safeNullableString(p, KEY_USER_ID)
 
         if (!isAuthenticated || userId.isNullOrBlank()) return
 
         val user = UserProfile(
             userId = userId,
-            email = p.getString(KEY_EMAIL, "") ?: "",
-            displayName = p.getString(KEY_DISPLAY_NAME, "") ?: "",
-            role = p.getString(KEY_ROLE, "") ?: "",
-            xpTotal = p.getInt(KEY_XP_TOTAL, 0),
-            level = p.getInt(KEY_LEVEL, 1),
-            coinsTotal = p.getInt(KEY_COINS_TOTAL, 0),
-            currentStreak = p.getInt(KEY_CURRENT_STREAK, 0),
-            longestStreak = p.getInt(KEY_LONGEST_STREAK, 0),
-            photoUrl = p.getString(KEY_PHOTO_URL, "") ?: "",
-            householdSide = p.getString(KEY_HOUSEHOLD_SIDE, "") ?: "",
-            householdId = p.getString(KEY_HOUSEHOLD_ID, "") ?: "",
-            personalIdentity = p.getString(KEY_PERSONAL_IDENTITY, "") ?: ""
+            email = safeString(p, KEY_EMAIL, ""),
+            displayName = safeString(p, KEY_DISPLAY_NAME, ""),
+            role = safeString(p, KEY_ROLE, ""),
+            xpTotal = safeInt(p, KEY_XP_TOTAL, 0),
+            level = safeInt(p, KEY_LEVEL, 1),
+            coinsTotal = safeInt(p, KEY_COINS_TOTAL, 0),
+            currentStreak = safeInt(p, KEY_CURRENT_STREAK, 0),
+            longestStreak = safeInt(p, KEY_LONGEST_STREAK, 0),
+            photoUrl = safeString(p, KEY_PHOTO_URL, ""),
+            householdSide = safeString(p, KEY_HOUSEHOLD_SIDE, ""),
+            householdId = safeString(p, KEY_HOUSEHOLD_ID, ""),
+            personalIdentity = safeString(p, KEY_PERSONAL_IDENTITY, "")
         )
 
-        val partnerId = p.getString(KEY_PARTNER_ID, null)
+        val partnerId = safeNullableString(p, KEY_PARTNER_ID)
         val partner = if (!partnerId.isNullOrBlank()) {
             UserProfile(
                 userId = partnerId,
-                email = p.getString(KEY_PARTNER_EMAIL, "") ?: "",
-                displayName = p.getString(KEY_PARTNER_DISPLAY_NAME, "") ?: "",
+                email = safeString(p, KEY_PARTNER_EMAIL, ""),
+                displayName = safeString(p, KEY_PARTNER_DISPLAY_NAME, ""),
                 role = "member",
-                xpTotal = p.getInt(KEY_PARTNER_XP, 0),
-                level = p.getInt(KEY_PARTNER_LEVEL, 1),
-                coinsTotal = p.getInt(KEY_PARTNER_COINS, 0),
-                currentStreak = p.getInt(KEY_PARTNER_STREAK, 0),
-                longestStreak = p.getInt(KEY_PARTNER_LONGEST_STREAK, 0),
+                xpTotal = safeInt(p, KEY_PARTNER_XP, 0),
+                level = safeInt(p, KEY_PARTNER_LEVEL, 1),
+                coinsTotal = safeInt(p, KEY_PARTNER_COINS, 0),
+                currentStreak = safeInt(p, KEY_PARTNER_STREAK, 0),
+                longestStreak = safeInt(p, KEY_PARTNER_LONGEST_STREAK, 0),
                 householdId = "",
                 personalIdentity = ""
             )
@@ -152,8 +172,8 @@ object SessionManager {
             isAuthenticated = true,
             user = user,
             partner = partner,
-            email = p.getString(KEY_EMAIL, "") ?: "",
-            currency = p.getString(KEY_CURRENCY, "USD") ?: "USD",
+            email = safeString(p, KEY_EMAIL, ""),
+            currency = safeString(p, KEY_CURRENCY, "USD"),
             householdId = user.householdId,
             personalIdentity = user.personalIdentity
         )

@@ -8,6 +8,10 @@
 **/build/
 local.properties
 
+# APK artifacts (must be built from source, never committed)
+*.apk
+*.aab
+
 # Logs / scratch
 scripts/contract-run.log
 
