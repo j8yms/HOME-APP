@@ -681,11 +681,31 @@ private fun AddTransactionDialog(
     onDismiss: () -> Unit,
     onSubmit: (type: String, description: String, category: String, amount: Double, wallet: String) -> Unit
 ) {
-    var isExpense by remember { mutableStateOf(true) }
+    var type by remember { mutableStateOf("") } // "income" or "expense"
     var wallet by remember { mutableStateOf("joint") }
     var category by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
     var amountText by remember { mutableStateOf("") }
+
+    val isIncome = type == "income"
+    val isExpense = type == "expense"
+    val incomeCategories = remember { listOf("Salary", "Bonus", "Freelance", "Gift", "Other") }
+    val expenseCategories = remember { categoryOptions }
+    val categoriesToShow = if (isIncome) incomeCategories else expenseCategories
+
+    val amount = amountText.toDoubleOrNull() ?: 0.0
+    val canSave = !isSubmitting && type.isNotBlank() && amount > 0 && wallet.isNotBlank()
+
+    // Income allocation state (plan-only)
+    var allocationTotal by remember { mutableStateOf(0.0) }
+    var allocations by remember { mutableStateOf(mapOf<String, String>()) } // dest -> amountText
+    val allocationDestinations = remember {
+        listOf("joint", "his", "hers", "vacation", "dream")
+    }
+
+    val allocationSum = allocations.values.mapNotNull { it.toDoubleOrNull() }.sum()
+    val unallocated = if (isIncome && amount > 0) amount - allocationSum else 0.0
+    val allocationValid = !isIncome || allocationSum <= amount + 1e-9
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -697,20 +717,56 @@ private fun AddTransactionDialog(
             ) {
                 OutlinedTextField(
                     value = amountText,
-                    onValueChange = { amountText = it },
-                    label = { Text("Amount") },
+                    onValueChange = {
+                        amountText = it
+                        // reset allocations when amount changes? keep simple - user adjusts
+                    },
+                    label = { Text("Amount (KES)") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Income", style = MaterialTheme.typography.labelLarge)
-                    Switch(checked = isExpense, onCheckedChange = { isExpense = it })
-                    Text("Expense", style = MaterialTheme.typography.labelLarge)
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Type", style = MaterialTheme.typography.labelMedium)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                type = "income"
+                                if (category.isNotBlank() && !incomeCategories.contains(category)) category = ""
+                            },
+                            colors = if (isIncome) {
+                                androidx.compose.material3.ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF2E7D32),
+                                    contentColor = Color.White
+                                )
+                            } else {
+                                androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Income")
+                        }
+                        Button(
+                            onClick = {
+                                type = "expense"
+                                if (category.isNotBlank() && !expenseCategories.contains(category)) category = ""
+                            },
+                            colors = if (isExpense) {
+                                androidx.compose.material3.ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                    contentColor = Color.White
+                                )
+                            } else {
+                                androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Expense")
+                        }
+                    }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Wallet target", style = MaterialTheme.typography.labelMedium)
@@ -729,37 +785,81 @@ private fun AddTransactionDialog(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Category", style = MaterialTheme.typography.labelMedium)
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        categoryOptions.forEach { option ->
-                            FilterChip(
-                                selected = category == option,
-                                onClick = { category = if (category == option) "" else option },
-                                label = { Text(option) }
-                            )
+                    if (type.isBlank()) {
+                        Text(
+                            "Select Income or Expense to see categories",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            categoriesToShow.forEach { option ->
+                                FilterChip(
+                                    selected = category == option,
+                                    onClick = { category = if (category == option) "" else option },
+                                    label = { Text(option) }
+                                )
+                            }
                         }
                     }
                 }
                 OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("Notes (optional)") },
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description (optional)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+                if (isIncome && amount > 0) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Income allocation (plan-only)", style = MaterialTheme.typography.labelMedium)
+                        allocationDestinations.forEach { dest ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(dest, modifier = Modifier.weight(0.3f))
+                                OutlinedTextField(
+                                    value = allocations[dest] ?: "",
+                                    onValueChange = { v ->
+                                        val filtered = v.filter { ch -> ch.isDigit() || ch == '.' }.take(8)
+                                        allocations = allocations.toMutableMap().apply { put(dest, filtered) }
+                                    },
+                                    label = { Text("KES") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    modifier = Modifier.weight(0.7f)
+                                )
+                            }
+                        }
+                        Text(
+                            "Total: KES ${"%.2f".format(allocationSum)} | Unallocated: KES ${"%.2f".format(unallocated)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (allocationValid) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+                        )
+                        if (!allocationValid) {
+                            Text(
+                                "Total allocated must be <= income amount.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    val amount = amountText.toDoubleOrNull() ?: 0.0
-                    if (amount > 0) {
-                        onSubmit(if (isExpense) "expense" else "income", notes.trim(), category, amount, wallet)
+                    if (canSave && allocationValid) {
+                        onSubmit(type, description.trim(), category, amount, wallet)
                     }
                 },
-                enabled = !isSubmitting && (amountText.toDoubleOrNull() ?: 0.0) > 0
+                enabled = canSave && allocationValid
             ) {
                 Text(if (isSubmitting) "Saving..." else "Save")
             }
@@ -989,7 +1089,8 @@ private fun walletLabel(wallet: String): String = when (wallet) {
 @Composable
 private fun formatMoney(amount: Double): String {
     val session by SessionManager.sessionState.collectAsState()
-    return CurrencyCatalog.formatMoney(amount, session.currency)
+    // Default to KES as requested; keep currency from session if available
+    return CurrencyCatalog.formatMoney(amount, session.currency.ifBlank { "KES" })
 }
 
 private fun millisToDateString(millis: Long): String =
