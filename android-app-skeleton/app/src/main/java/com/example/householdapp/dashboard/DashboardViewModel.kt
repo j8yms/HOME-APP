@@ -13,6 +13,7 @@ import com.example.householdapp.core.model.MoneyData
 import com.example.householdapp.core.model.QuickActionsData
 import com.example.householdapp.core.model.TodayData
 import com.example.householdapp.core.repository.DashboardRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,10 +33,16 @@ class DashboardViewModel(
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
+    // P0: single-flight — a new load cancels any in-flight one so rapid
+    // refresh taps, recomposition, or navigation can't stack duplicate
+    // dashboard requests against the backend.
+    private var loadJob: Job? = null
+
     fun loadDashboard(userId: String, forceRefresh: Boolean = false) {
         if (userId.isBlank()) return
 
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoading = !forceRefresh && (it.dashboardData.currentUser == null && it.dashboardData.greeting.currentUser == null),

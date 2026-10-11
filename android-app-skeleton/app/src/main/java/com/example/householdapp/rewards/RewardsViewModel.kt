@@ -6,6 +6,7 @@ import com.example.householdapp.core.model.Redemption
 import com.example.householdapp.core.model.RewardItem
 import com.example.householdapp.core.repository.RewardsRepository
 import com.example.householdapp.core.session.SessionManager
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,9 +33,14 @@ class RewardsViewModel(
         loadRedemptions()
     }
 
+    // P0: single-flight loads.
+    private var rewardsJob: Job? = null
+    private var redemptionsJob: Job? = null
+
     fun loadRewards(forceRefresh: Boolean = false) {
         val userId = SessionManager.sessionState.value.user?.userId.orEmpty()
-        viewModelScope.launch {
+        rewardsJob?.cancel()
+        rewardsJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoading = !forceRefresh && it.rewards.isEmpty(),
@@ -135,7 +141,8 @@ class RewardsViewModel(
     }
 
     fun loadRedemptions(forceRefresh: Boolean = false) {
-        viewModelScope.launch {
+        redemptionsJob?.cancel()
+        redemptionsJob = viewModelScope.launch {
             runCatching { rewardsRepository.listRedemptions() }
                 .onSuccess { response ->
                     val redemptions = if (response.success) {

@@ -8,6 +8,7 @@ import com.example.householdapp.core.repository.DashboardRepository
 import com.example.householdapp.core.repository.HistoryRepository
 import com.example.householdapp.core.repository.HouseholdLogRepository
 import com.example.householdapp.core.session.SessionManager
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,10 +44,15 @@ class ActivityFeedViewModel(
         loadActivity()
     }
 
+    // P0: single-flight — this fans out to 3 parallel requests (incl. a
+    // full dashboard load), so overlapping invocations are expensive.
+    private var loadJob: Job? = null
+
     fun loadActivity() {
         val userId = SessionManager.sessionState.value.user?.userId.orEmpty()
 
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
             val logsDeferred = async { runCatching { householdLogRepository.listLogs(userId) } }

@@ -9,6 +9,7 @@ import com.example.householdapp.core.model.TransferRoute
 import com.example.householdapp.core.model.TransferTarget
 import com.example.householdapp.core.repository.FinanceRepository
 import com.example.householdapp.core.session.SessionManager
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,8 +42,13 @@ class FinanceViewModel : ViewModel() {
         refresh()
     }
 
+    // P0: single-flight refresh so recomposition/navigation can't stack
+    // duplicate finance loads.
+    private var refreshJob: Job? = null
+
     fun refresh() {
-        viewModelScope.launch {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             runCatching { repository.getSummary() }
                 .onSuccess { response ->

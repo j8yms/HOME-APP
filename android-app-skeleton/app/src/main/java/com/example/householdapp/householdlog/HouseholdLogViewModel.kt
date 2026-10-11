@@ -7,6 +7,7 @@ import com.example.householdapp.core.repository.HouseholdLogRepository
 import com.example.householdapp.core.session.SessionManager
 import com.example.householdapp.core.ui.components.LevelUpEvent
 import com.example.householdapp.core.ui.components.detectLevelUp
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,8 +33,12 @@ class HouseholdLogViewModel(
         loadLogs()
     }
 
+    // P0: single-flight load.
+    private var loadJob: Job? = null
+
     fun loadLogs(forceRefresh: Boolean = false) {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoading = !forceRefresh && it.logs.isEmpty(),

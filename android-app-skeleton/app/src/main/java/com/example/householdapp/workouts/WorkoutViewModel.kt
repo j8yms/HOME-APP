@@ -7,6 +7,7 @@ import com.example.householdapp.core.repository.WorkoutRepository
 import com.example.householdapp.core.session.SessionManager
 import com.example.householdapp.core.ui.components.LevelUpEvent
 import com.example.householdapp.core.ui.components.detectLevelUp
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,11 +33,15 @@ class WorkoutViewModel(
         loadWorkouts()
     }
 
+    // P0: single-flight load.
+    private var loadJob: Job? = null
+
     fun loadWorkouts(forceRefresh: Boolean = false) {
         val userId = SessionManager.sessionState.value.user?.userId.orEmpty()
         if (userId.isBlank()) return
 
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoadingHistory = !forceRefresh && it.workouts.isEmpty(),

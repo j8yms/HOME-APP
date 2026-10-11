@@ -491,10 +491,14 @@ internal class ResilientAppsScriptInterceptor : Interceptor {
 }
 
 object ApiFactory {
-    private const val CONNECT_TIMEOUT_SECONDS = 30L
-    private const val READ_TIMEOUT_SECONDS = 120L
+    // P0: bound worst-case hangs. Backend health checks respond in ~3.5s and
+    // even full dashboard loads complete well under a minute; a request that
+    // still hasn't finished after these limits is failing and must surface a
+    // retryable error instead of spinning forever.
+    private const val CONNECT_TIMEOUT_SECONDS = 20L
+    private const val READ_TIMEOUT_SECONDS = 60L
     private const val WRITE_TIMEOUT_SECONDS = 60L
-    private const val CALL_TIMEOUT_SECONDS = 120L
+    private const val CALL_TIMEOUT_SECONDS = 90L
 
     private val okHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()

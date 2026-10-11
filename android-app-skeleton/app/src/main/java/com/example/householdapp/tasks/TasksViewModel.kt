@@ -9,6 +9,7 @@ import com.example.householdapp.core.repository.TaskRepository
 import com.example.householdapp.core.session.SessionManager
 import com.example.householdapp.core.ui.components.LevelUpEvent
 import com.example.householdapp.core.ui.components.detectLevelUp
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,8 +40,13 @@ class TasksViewModel(
         loadTasks()
     }
 
+    // P0: single-flight load so rapid refresh/navigation can't stack
+    // duplicate task-list requests.
+    private var loadJob: Job? = null
+
     fun loadTasks(forceRefresh: Boolean = false) {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoading = !forceRefresh && it.tasks.isEmpty(),
