@@ -125,6 +125,12 @@ private fun itemDetails(item: WealthItem, section: WealthSection, currency: Stri
         WealthSection.ACCOUNTS -> {
             if (item.type.isNotBlank()) parts += item.type
             if (item.provider.isNotBlank()) parts += item.provider
+            // Request 6: per-account currency is always visible; trading
+            // accounts are labelled as excluded from net worth.
+            if (item.currency.isNotBlank()) parts += item.currency
+            if (item.type.lowercase() in setOf("trading", "trade", "forex", "fx")) {
+                parts += "excluded from net worth"
+            }
         }
 
         WealthSection.TRADES -> {
@@ -160,6 +166,11 @@ private fun cardAmount(item: WealthItem, section: WealthSection, currency: Strin
     if (section == WealthSection.TRADES) {
         val sign = if (item.pnl > 0.0) "+" else if (item.pnl < 0.0) "-" else ""
         return sign + CurrencyCatalog.formatMoney(item.pnl, currency)
+    }
+    // Request 6: account balances render in their own recorded currency
+    // (trading accounts in USD); never converted here.
+    if (section == WealthSection.ACCOUNTS && item.currency.isNotBlank()) {
+        return CurrencyCatalog.formatMoney(item.value, item.currency)
     }
     return CurrencyCatalog.formatMoney(item.value, currency)
 }
@@ -375,6 +386,22 @@ fun WealthScreen(viewModel: WealthViewModel = viewModel()) {
                                         containerColor = MaterialTheme.colorScheme.surface,
                                         contentColor = MaterialTheme.colorScheme.onSurface
                                     )
+                                    // Requests 6 & 7: eligible accounts count toward
+                                    // net worth; trading accounts are tracked
+                                    // separately and excluded.
+                                    Pill(
+                                        text = "Accounts " + money(totals.eligibleAccounts, currency),
+                                        containerColor = MaterialTheme.colorScheme.surface,
+                                        contentColor = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                if (totals.tradingAccounts != 0.0 || totals.excludedAccounts != 0.0) {
+                                    Text(
+                                        text = "Trading " + money(totals.tradingAccounts, "USD") +
+                                            " kept in USD and excluded from net worth",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                                 val change = totals.monthlyChange
                                 Text(
@@ -535,6 +562,19 @@ fun WealthScreen(viewModel: WealthViewModel = viewModel()) {
                             }
                         }
                     )
+                }
+
+                // Request 8: daily receipt logs live under Passive Income,
+                // reusing existing sources without requiring new ones.
+                if (uiState.section == WealthSection.INCOME) {
+                    item {
+                        PassiveLogsSection(
+                            viewModel = viewModel,
+                            userId = userId,
+                            currency = currency,
+                            sources = uiState.items
+                        )
+                    }
                 }
 
                 if (uiState.items.isEmpty()) {

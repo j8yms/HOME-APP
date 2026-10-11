@@ -299,6 +299,14 @@ function validateWealthItem(sectionName, item) {
   if (!normalizeString(item.name)) {
     throw new Error('name is required.');
   }
+
+  // Request 6: account currency is explicit (uppercased, never converted).
+  // Blank is kept as-is (treated as household currency in totals).
+  // No allowlist here so editing existing accounts with other recorded
+  // currencies never fails validation.
+  if (sectionName === 'accounts' || sectionName === 'propAccounts' || sectionName === 'propPayouts') {
+    item.currency = normalizeString(item.currency).toUpperCase();
+  }
 }
 
 function listWealthSection(payload) {
@@ -556,8 +564,36 @@ function saveFinancialFreedom(payload) {
   return getFinancialFreedom({});
 }
 
+// Requests 6 & 7 — single source of truth for net-worth eligibility.
+// Account types that are always excluded from household net worth
+// (shown separately in their own currency, never converted).
+var TRADING_ACCOUNT_TYPES = ['trading', 'trade', 'forex', 'fx'];
+
+function isTradingAccountRow(row) {
+  return TRADING_ACCOUNT_TYPES.indexOf(normalizeString(row.account_type).toLowerCase()) >= 0;
+}
+
+function accountCurrencyCode(row) {
+  return normalizeString(row.currency).toUpperCase();
+}
+
+// Eligible asset accounts: non-trading accounts denominated in the
+// household finance currency (or with no currency recorded, which is
+// treated as household currency — never reinterpreted or converted).
+// Anything else is reported under excludedAccounts so the owner can see
+// exactly what counts and what does not.
+function isNetWorthEligibleAccount(row, householdCurrency) {
+  if (isTradingAccountRow(row)) return false;
+  var currency = accountCurrencyCode(row);
+  if (!currency) return true;
+  return currency === householdCurrency;
+}
+
 function computeWealthTotals(householdId) {
   var cashSummary = getFinanceSummaryByHousehold(householdId);
+  var householdCurrency = normalizeString(
+    cashSummary.currency || getConfigString('currency', 'USD')
+  ).toUpperCase();
 
   var assets = sumWealthValues(SHEET_NAMES.ASSETS, function(row) {
     return Number(row.value) || 0;
@@ -575,14 +611,35 @@ function computeWealthTotals(householdId) {
     return Number(row.amount_owed) || 0;
   }, householdId);
 
+  var eligibleAccounts = 0;
+  var excludedAccounts = 0;
+  var tradingAccounts = 0;
+  findManyBy(SHEET_NAMES.INVESTMENT_ACCOUNTS, function(row) {
+    return rowMatchesHousehold(row, householdId);
+  }).forEach(function(row) {
+    var balance = Math.round((Number(row.balance) || 0) * 100) / 100;
+    if (isTradingAccountRow(row)) {
+      tradingAccounts = Math.round((tradingAccounts + balance) * 100) / 100;
+      excludedAccounts = Math.round((excludedAccounts + balance) * 100) / 100;
+    } else if (isNetWorthEligibleAccount(row, householdCurrency)) {
+      eligibleAccounts = Math.round((eligibleAccounts + balance) * 100) / 100;
+    } else {
+      excludedAccounts = Math.round((excludedAccounts + balance) * 100) / 100;
+    }
+  });
+
   var cash = Math.round(((cashSummary.balance || 0) + (cashSummary.savings || 0)) * 100) / 100;
-  var netWorth = Math.round((cash + assets + investmentsValue - liabilities) * 100) / 100;
+  var netWorth = Math.round((cash + assets + investmentsValue + eligibleAccounts - liabilities) * 100) / 100;
 
   return {
     cash: cash,
     assets: assets,
     investments: investmentsValue,
     invested: invested,
+    eligibleAccounts: eligibleAccounts,
+    excludedAccounts: excludedAccounts,
+    tradingAccounts: tradingAccounts,
+    householdCurrency: householdCurrency,
     liabilities: liabilities,
     netWorth: netWorth
   };
@@ -625,6 +682,10 @@ function getWealthSummary(payload) {
       assets: totals.assets,
       investments: totals.investments,
       invested: totals.invested,
+      eligibleAccounts: totals.eligibleAccounts,
+      excludedAccounts: totals.excludedAccounts,
+      tradingAccounts: totals.tradingAccounts,
+      householdCurrency: totals.householdCurrency,
       gainLoss: Math.round((totals.investments - totals.invested) * 100) / 100,
       liabilities: totals.liabilities,
       netWorth: totals.netWorth,

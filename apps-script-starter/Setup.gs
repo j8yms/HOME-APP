@@ -115,6 +115,10 @@ function initializeHouseholdSpreadsheet() {
       headers: ['income_id', 'household_id', 'user_id', 'name', 'source_type', 'amount_monthly', 'status', 'notes', 'created_at', 'updated_at']
     },
     {
+      name: SHEET_NAMES.PASSIVE_INCOME_LOGS,
+      headers: ['log_id', 'household_id', 'user_id', 'income_id', 'source_name', 'amount', 'income_date', 'income_type', 'notes', 'entry_kind', 'linked_transaction_id', 'created_at', 'updated_at']
+    },
+    {
       name: SHEET_NAMES.PROP_ACCOUNTS,
       headers: ['account_id', 'household_id', 'user_id', 'name', 'provider', 'currency', 'balance', 'status', 'notes', 'created_at', 'updated_at']
     },

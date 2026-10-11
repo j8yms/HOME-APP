@@ -19,6 +19,8 @@ import kotlinx.coroutines.launch
 data class FinanceUiState(
     val isLoading: Boolean = false,
     val isSubmitting: Boolean = false,
+    // Request 5: guards against duplicate delete taps per record.
+    val deletingTransactionId: String? = null,
     val summary: FinanceSummary = FinanceSummary(),
     val errorMessage: String? = null,
     val successMessage: String? = null,
@@ -59,7 +61,12 @@ class FinanceViewModel : ViewModel() {
                         }
                     } else {
                         SessionManager.setCurrency(data.currency)
-                        _uiState.update { it.copy(isLoading = false, summary = data) }
+                        // Crash fix: duplicate transaction ids would kill the
+                        // keyed ledger list — collapse defensively.
+                        val safe = data.copy(
+                            recentTransactions = data.recentTransactions.distinctBy { it.transactionId }
+                        )
+                        _uiState.update { it.copy(isLoading = false, summary = safe) }
                     }
                 }
                 .onFailure { throwable ->
@@ -86,7 +93,9 @@ class FinanceViewModel : ViewModel() {
                     _uiState.update {
                         it.copy(
                             isSubmitting = false,
-                            summary = data.summary,
+                            summary = data.summary.copy(
+                                recentTransactions = data.summary.recentTransactions.distinctBy { tx -> tx.transactionId }
+                            ),
                             successMessage = "Transaction added."
                         )
                     }
@@ -96,6 +105,46 @@ class FinanceViewModel : ViewModel() {
                 .onFailure { throwable ->
                     _uiState.update {
                         it.copy(isSubmitting = false, errorMessage = throwable.message ?: "Unable to add transaction.")
+                    }
+                }
+        }
+    }
+
+    // Request 5: delete only after the backend confirms; the returned
+    // summary keeps balances, totals and Activity consistent.
+    fun deleteTransaction(transactionId: String, onSuccess: () -> Unit) {
+        val userId = SessionManager.sessionState.value.user?.userId ?: return
+        if (_uiState.value.deletingTransactionId != null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(deletingTransactionId = transactionId, errorMessage = null, successMessage = null) }
+            runCatching { repository.deleteTransaction(transactionId, userId) }
+                .onSuccess { response ->
+                    val data = response.data
+                    if (!response.success || data == null) {
+                        _uiState.update {
+                            it.copy(deletingTransactionId = null, errorMessage = response.error?.message ?: "Unable to delete transaction.")
+                        }
+                        return@launch
+                    }
+                    _uiState.update {
+                        it.copy(
+                            deletingTransactionId = null,
+                            summary = data.summary.copy(
+                                recentTransactions = data.summary.recentTransactions.distinctBy { tx -> tx.transactionId }
+                            ),
+                            successMessage = if (data.deletedIds.size > 1) {
+                                "Transaction and its linked transfer deleted."
+                            } else {
+                                "Transaction deleted."
+                            }
+                        )
+                    }
+                    SessionManager.setCurrency(data.summary.currency)
+                    onSuccess()
+                }
+                .onFailure { throwable ->
+                    _uiState.update {
+                        it.copy(deletingTransactionId = null, errorMessage = throwable.message ?: "Unable to delete transaction.")
                     }
                 }
         }

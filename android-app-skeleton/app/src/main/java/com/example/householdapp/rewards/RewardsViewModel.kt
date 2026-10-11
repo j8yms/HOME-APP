@@ -52,7 +52,8 @@ class RewardsViewModel(
             runCatching { rewardsRepository.getRewards(userId) }
                 .onSuccess { response ->
                     val rewards = if (response.success) {
-                        response.data?.rewards.orEmpty()
+                        // Crash fix: keep LazyColumn keys unique.
+                        response.data?.rewards.orEmpty().distinctBy { it.rewardId }
                     } else {
                         emptyList()
                     }
@@ -146,7 +147,8 @@ class RewardsViewModel(
             runCatching { rewardsRepository.listRedemptions() }
                 .onSuccess { response ->
                     val redemptions = if (response.success) {
-                        response.data?.redemptions.orEmpty()
+                        // Crash fix: keep LazyColumn keys unique.
+                        response.data?.redemptions.orEmpty().distinctBy { it.redemptionId }
                     } else {
                         emptyList()
                     }

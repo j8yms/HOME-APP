@@ -27,6 +27,7 @@ var SHEET_NAMES = {
   WEALTH_MILESTONES: 'Wealth_Milestones',
   INVESTMENT_TRANSACTIONS: 'Investment_Transactions',
   PASSIVE_INCOME: 'Passive_Income',
+  PASSIVE_INCOME_LOGS: 'Passive_Income_Logs',
   PROP_ACCOUNTS: 'Prop_Accounts',
   PROP_PAYOUTS: 'Prop_Payouts',
   REQUEST_LOG: 'Request_Log'
@@ -142,6 +143,15 @@ function updateRowByIndex(sheetName, rowIndex, object, headers) {
     return toSheetValue(object[header]);
   });
   sheet.getRange(rowIndex, 1, 1, row.length).setValues([row]);
+  invalidateSheetCache(sheetName);
+}
+
+// Request 5: physical row deletion. Collect row indexes first and delete in
+// descending order so earlier deletions never shift pending indexes. Callers
+// must hold the script lock when deleting multiple linked rows.
+function deleteRowByIndex(sheetName, rowIndex) {
+  var sheet = getSheet(sheetName);
+  sheet.deleteRow(rowIndex);
   invalidateSheetCache(sheetName);
 }
 

@@ -21,6 +21,10 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -140,6 +144,27 @@ private fun ActivityCard(activity: ActivityItem) {
             Icons.Filled.CardGiftcard,
             MaterialTheme.colorScheme.secondaryContainer,
             MaterialTheme.colorScheme.secondary
+        )
+        // Request 12: money events are visually distinct from XP events.
+        "income" -> Triple(
+            Icons.Filled.TrendingUp,
+            MaterialTheme.colorScheme.primaryContainer,
+            MaterialTheme.colorScheme.primary
+        )
+        "expense" -> Triple(
+            Icons.Filled.ShoppingCart,
+            MaterialTheme.colorScheme.errorContainer,
+            MaterialTheme.colorScheme.error
+        )
+        "transfer" -> Triple(
+            Icons.Filled.SwapHoriz,
+            MaterialTheme.colorScheme.secondaryContainer,
+            MaterialTheme.colorScheme.secondary
+        )
+        "savings" -> Triple(
+            Icons.Filled.Savings,
+            MaterialTheme.colorScheme.tertiaryContainer,
+            MaterialTheme.colorScheme.tertiary
         )
         else -> Triple(
             Icons.Filled.Refresh,

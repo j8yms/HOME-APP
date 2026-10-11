@@ -101,6 +101,7 @@ var POST_ONLY_ROUTES = {
   'rewards/redeem': true,
   'household/log/create': true,
   'finance/add_transaction': true,
+  'finance/delete_transaction': true,
   'finance/net_worth_snapshot': true,
   'budgets/create': true,
   'budgets/update': true,
@@ -109,6 +110,8 @@ var POST_ONLY_ROUTES = {
   'transfers/execute': true,
   'wealth/save': true,
   'wealth/delete': true,
+  'passive_income/log': true,
+  'passive_income/log/delete': true,
   'wealth/freedom/save': true,
   'library/create': true,
   'library/update': true,
@@ -202,6 +205,9 @@ function dispatchRoute(route, payload, viaPost) {
     case 'finance/add_transaction':
       return jsonSuccess(addTransaction(payload));
 
+    case 'finance/delete_transaction':
+      return jsonSuccess(deleteTransaction(payload));
+
     case 'finance/goals':
       return jsonSuccess(setFinanceGoals(payload));
 
@@ -260,6 +266,15 @@ function dispatchRoute(route, payload, viaPost) {
 
     case 'wealth/freedom/save':
       return jsonSuccess(saveFinancialFreedom(payload));
+
+    case 'passive_income/logs':
+      return jsonSuccess({ logs: listPassiveIncomeLogs(payload) });
+
+    case 'passive_income/log':
+      return jsonSuccess({ log: savePassiveIncomeLog(payload) });
+
+    case 'passive_income/log/delete':
+      return jsonSuccess(deletePassiveIncomeLog(payload));
 
     case 'library/list':
       return jsonSuccess({ entries: listReferenceEntries(payload) });

@@ -249,6 +249,20 @@ data class AddTransactionResponse(
     val summary: FinanceSummary
 )
 
+// Request 5: safe deletion; the backend returns the recalculated summary so
+// balances, totals and Activity stay consistent with the stored records.
+data class DeleteTransactionRequest(
+    val route: String = "finance/delete_transaction",
+    val transactionId: String,
+    val userId: String,
+    val requestId: String = ""
+)
+
+data class DeleteTransactionResponse(
+    val deletedIds: List<String> = emptyList(),
+    val summary: FinanceSummary = FinanceSummary()
+)
+
 data class SetFinanceGoalsRequest(
     val route: String = "finance/goals",
     val vacationGoal: Double,
@@ -464,6 +478,13 @@ data class WealthTotals(
     val assets: Double = 0.0,
     val investments: Double = 0.0,
     val invested: Double = 0.0,
+    // Requests 6 & 7: eligible asset accounts included in net worth;
+    // trading + foreign-currency accounts excluded (defaults keep older
+    // backends compatible).
+    val eligibleAccounts: Double = 0.0,
+    val excludedAccounts: Double = 0.0,
+    val tradingAccounts: Double = 0.0,
+    val householdCurrency: String = "",
     val gainLoss: Double = 0.0,
     val liabilities: Double = 0.0,
     val netWorth: Double = 0.0,
@@ -601,4 +622,56 @@ data class SaveFinancialFreedomRequest(
     val targetNetWorth: Double = 0.0,
     val targetDate: String = "",
     val monthlyContribution: Double = 0.0
+)
+
+// Request 8: daily passive-income logs. entryKind is "actual" (received) or
+// "projected"; linkedTransactionId ties an actual log to its single finance
+// row so edits/deletes never double-count.
+data class PassiveIncomeLog(
+    val logId: String = "",
+    val incomeId: String = "",
+    val sourceName: String = "",
+    val amount: Double = 0.0,
+    val incomeDate: String = "",
+    val incomeType: String = "",
+    val notes: String = "",
+    val entryKind: String = "actual",
+    val linkedTransactionId: String = "",
+    val userId: String = "",
+    val createdAt: String = "",
+    val updatedAt: String = ""
+)
+
+data class PassiveIncomeLogsResponse(
+    val logs: List<PassiveIncomeLog> = emptyList()
+)
+
+data class SavePassiveIncomeLogRequest(
+    val route: String = "passive_income/log",
+    val logId: String = "",
+    val userId: String,
+    val incomeId: String = "",
+    val sourceName: String = "",
+    val amount: Double,
+    val incomeDate: String = "",
+    val incomeType: String = "",
+    val notes: String = "",
+    val entryKind: String = "actual",
+    val linkTransaction: Boolean = false,
+    val requestId: String = ""
+)
+
+data class SavePassiveIncomeLogResponse(
+    val log: PassiveIncomeLog
+)
+
+data class DeletePassiveIncomeLogRequest(
+    val route: String = "passive_income/log/delete",
+    val logId: String,
+    val userId: String,
+    val requestId: String = ""
+)
+
+data class DeletePassiveIncomeLogResponse(
+    val logId: String = ""
 )

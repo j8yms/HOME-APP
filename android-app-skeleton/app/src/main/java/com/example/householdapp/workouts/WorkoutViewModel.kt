@@ -52,7 +52,8 @@ class WorkoutViewModel(
             runCatching { workoutRepository.listWorkouts(userId) }
                 .onSuccess { response ->
                     val workouts = if (response.success) {
-                        response.data?.workouts.orEmpty()
+                        // Crash fix: keep LazyColumn keys unique.
+                        response.data?.workouts.orEmpty().distinctBy { it.workoutId }
                     } else {
                         emptyList()
                     }

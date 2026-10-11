@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.EventNote
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Flight
@@ -94,6 +95,8 @@ fun FinanceScreen(
     var showBillDialog by remember { mutableStateOf(false) }
     var showShoppingDialog by remember { mutableStateOf(false) }
     var showGoalsDialog by remember { mutableStateOf(false) }
+    // Request 5: record pending delete confirmation.
+    var transactionToDelete by remember { mutableStateOf<MoneyTransaction?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -256,7 +259,9 @@ fun FinanceScreen(
                                         transaction.userId,
                                         sessionState.user?.displayName,
                                         sessionState.partner?.displayName
-                                    )
+                                    ),
+                                    isDeleting = uiState.deletingTransactionId == transaction.transactionId,
+                                    onDelete = { transactionToDelete = transaction }
                                 )
                             }
                         }
@@ -315,6 +320,45 @@ fun FinanceScreen(
             onDismiss = { if (!uiState.isSubmitting) showGoalsDialog = false },
             onSubmit = { vacation, dream ->
                 viewModel.setGoals(vacation, dream) { showGoalsDialog = false }
+            }
+        )
+    }
+    // Request 5: confirm with full record details; delete only runs after
+    // the backend confirms, and balances refresh from its response.
+    transactionToDelete?.let { target ->
+        val deleting = uiState.deletingTransactionId == target.transactionId
+        AlertDialog(
+            onDismissRequest = { if (!deleting) transactionToDelete = null },
+            title = { Text("Delete transaction?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(target.description.ifBlank { "(no description)" }, fontWeight = FontWeight.SemiBold)
+                    Text("${target.type.replaceFirstChar { it.uppercase() }} • ${formatMoney(target.amount)}")
+                    if (target.category.isNotBlank()) Text("Category: ${target.category}")
+                    Text("Wallet: ${walletLabel(target.wallet)}")
+                    if (target.createdAt.isNotBlank()) Text("Recorded: ${target.createdAt}")
+                    if (target.category.equals("transfer", ignoreCase = true)) {
+                        Text(
+                            "This is part of a transfer — its linked entry will be removed together so balances stay consistent.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteTransaction(target.transactionId) { transactionToDelete = null }
+                    },
+                    enabled = !deleting
+                ) { Text(if (deleting) "Deleting..." else "Delete") }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { transactionToDelete = null },
+                    enabled = !deleting
+                ) { Text("Keep") }
             }
         )
     }
@@ -617,7 +661,12 @@ private fun ShoppingItemCard(item: ShoppingItem, onPurchased: () -> Unit) {
 }
 
 @Composable
-private fun TransactionCard(transaction: MoneyTransaction, actorName: String) {
+private fun TransactionCard(
+    transaction: MoneyTransaction,
+    actorName: String,
+    isDeleting: Boolean = false,
+    onDelete: (() -> Unit)? = null
+) {
     val positive = transaction.type == "income" || transaction.type == "savings_withdraw"
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -670,6 +719,23 @@ private fun TransactionCard(transaction: MoneyTransaction, actorName: String) {
                 textAlign = TextAlign.End
             )
             Avatar(name = actorName, size = 26.dp)
+            // Request 5: clearly accessible delete action per record.
+            if (onDelete != null) {
+                if (isDeleting) {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = "Delete transaction",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -682,7 +748,18 @@ private fun AddTransactionDialog(
     onSubmit: (type: String, description: String, category: String, amount: Double, wallet: String) -> Unit
 ) {
     var type by remember { mutableStateOf("") } // "income" or "expense"
-    var wallet by remember { mutableStateOf("joint") }
+    // Request 4: default to the current owner's wallet resolved from the
+    // authenticated profile (householdSide his/hers); fall back to joint and
+    // always allow manual override via the chips below.
+    val sessionState by SessionManager.sessionState.collectAsState()
+    val ownerDefaultWallet = remember(sessionState.user?.householdSide) {
+        when (sessionState.user?.householdSide?.lowercase()) {
+            "his" -> "his"
+            "hers" -> "hers"
+            else -> "joint"
+        }
+    }
+    var wallet by remember(ownerDefaultWallet) { mutableStateOf(ownerDefaultWallet) }
     var category by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var amountText by remember { mutableStateOf("") }

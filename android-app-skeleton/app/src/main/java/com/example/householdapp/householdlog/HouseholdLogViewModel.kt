@@ -48,7 +48,8 @@ class HouseholdLogViewModel(
 
             runCatching { repository.listLogs() }
                 .onSuccess { response ->
-                    val logs = if (response.success) response.data?.logs.orEmpty() else emptyList()
+                    // Crash fix: keep LazyColumn keys unique.
+                    val logs = if (response.success) response.data?.logs.orEmpty().distinctBy { it.logId } else emptyList()
                     _uiState.update {
                         it.copy(
                             isLoading = false,

@@ -272,6 +272,114 @@ function addTransaction(payload) {
   }
 }
 
+// Shared row remover: deletes one money row plus, for transfers, its
+// linked pair row and the transfer record. Returns deleted transaction ids.
+// Callers must hold the script lock. Also reused by passive-income log
+// deletion for linked finance rows.
+function removeMoneyTransactionRows(transactionId, householdId) {
+  var target = findOneBy(SHEET_NAMES.MONEY_TRANSACTIONS, function(row) {
+    return row.transaction_id === transactionId;
+  });
+  if (!target) {
+    throw new Error('Transaction not found.');
+  }
+
+  var deletedIds = [target.transaction_id];
+  var moneyIndexes = [target.__rowIndex];
+  var transferIndexes = [];
+
+  if (normalizeString(target.category).toLowerCase() === 'transfer') {
+    // Wallet-to-wallet transfers are stored as a linked expense + income
+    // pair (same amount, same timestamp). Delete both together.
+    var amount = Number(target.amount) || 0;
+    var createdAt = normalizeString(target.created_at);
+    var pair = findOneBy(SHEET_NAMES.MONEY_TRANSACTIONS, function(row) {
+      if (row.transaction_id === transactionId) return false;
+      if (!rowMatchesHousehold(row, target.household_id || householdId)) return false;
+      if (normalizeString(row.category).toLowerCase() !== 'transfer') return false;
+      if ((Number(row.amount) || 0) !== amount) return false;
+      return normalizeString(row.created_at) === createdAt;
+    });
+    if (pair) {
+      deletedIds.push(pair.transaction_id);
+      moneyIndexes.push(pair.__rowIndex);
+    }
+
+    // Remove the matching transfer record so no orphaned transfer remains.
+    var sourceWallet = '';
+    var destWallet = '';
+    [target, pair].forEach(function(row) {
+      if (!row) return;
+      if (normalizeString(row.type) === 'expense') sourceWallet = normalizeWallet(row.wallet);
+      if (normalizeString(row.type) === 'income') destWallet = normalizeWallet(row.wallet);
+    });
+    var transferRow = findOneBy(SHEET_NAMES.TRANSFERS, function(row) {
+      if (!rowMatchesHousehold(row, target.household_id || householdId)) return false;
+      if ((Number(row.amount) || 0) !== amount) return false;
+      if (normalizeString(row.created_at) !== createdAt) return false;
+      if (sourceWallet && normalizeString(row.source_account).toLowerCase() !== sourceWallet) return false;
+      if (destWallet && normalizeString(row.destination_target).toLowerCase() !== destWallet) return false;
+      return true;
+    });
+    if (transferRow) {
+      transferIndexes.push(transferRow.__rowIndex);
+    }
+  }
+
+  moneyIndexes.sort(function(a, b) { return b - a; }).forEach(function(index) {
+    deleteRowByIndex(SHEET_NAMES.MONEY_TRANSACTIONS, index);
+  });
+  transferIndexes.sort(function(a, b) { return b - a; }).forEach(function(index) {
+    deleteRowByIndex(SHEET_NAMES.TRANSFERS, index);
+  });
+
+  return deletedIds;
+}
+
+// Request 5: safe transaction deletion. Removes the row (and, for
+// transfers, its linked pair row plus the transfer record) inside one lock
+// hold and returns the recalculated summary so balances, totals and Activity
+// stay consistent. Historical audit: transfer-record rows are removed together
+// with their money rows so no orphaned transfer remains.
+function deleteTransaction(payload) {
+  var transactionId = normalizeString(payload.transactionId);
+  var userId = normalizeString(payload.userId);
+
+  if (!transactionId) {
+    throw new Error('transactionId is required.');
+  }
+  if (!userId) {
+    throw new Error('userId is required.');
+  }
+
+  var householdId = getUserHouseholdId(userId);
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+
+  try {
+    var target = findOneBy(SHEET_NAMES.MONEY_TRANSACTIONS, function(row) {
+      return row.transaction_id === transactionId;
+    });
+    if (!target) {
+      throw new Error('Transaction not found.');
+    }
+    if (householdId && target.household_id && target.household_id !== householdId) {
+      throw new Error('Transaction does not belong to your household.');
+    }
+
+    var household = target.household_id || householdId;
+    var deletedIds = removeMoneyTransactionRows(target.transaction_id, household);
+
+    return {
+      deletedIds: deletedIds,
+      summary: getFinanceSummaryByHousehold(household)
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function listBills(payload) {
   var userId = normalizeString(payload.userId);
   var householdId = getUserHouseholdId(userId);

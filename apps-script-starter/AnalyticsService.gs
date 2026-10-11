@@ -14,6 +14,8 @@ function getAnalyticsChart(payload) {
   findManyBy(SHEET_NAMES.MONEY_TRANSACTIONS, function(row) {
     if (!rowMatchesHousehold(row, householdId)) return false;
     if (normalizeString(row.type) !== 'expense') return false;
+    // Request 12: transfer legs are money movement, not spending.
+    if (normalizeString(row.category).toLowerCase() === 'transfer') return false;
     return normalizeString(row.created_at).substring(0, 7) === month;
   }).forEach(function(row) {
     var amount = Number(row.amount) || 0;

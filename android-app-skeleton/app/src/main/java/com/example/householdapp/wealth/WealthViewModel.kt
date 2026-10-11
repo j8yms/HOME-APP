@@ -2,10 +2,14 @@ package com.example.householdapp.wealth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.householdapp.core.network.PassiveIncomeLog
 import com.example.householdapp.core.network.SaveFinancialFreedomRequest
+import com.example.householdapp.core.network.SavePassiveIncomeLogRequest
 import com.example.householdapp.core.network.WealthItem
 import com.example.householdapp.core.network.WealthSummaryResponse
 import com.example.householdapp.core.repository.WealthRepository
+import java.util.UUID
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +45,11 @@ data class WealthUiState(
     val summary: WealthSummaryResponse? = null,
     val section: WealthSection = WealthSection.INVESTMENTS,
     val items: List<WealthItem> = emptyList(),
+    // Request 8: daily passive-income logs for the selected month.
+    val passiveLogs: List<PassiveIncomeLog> = emptyList(),
+    val passiveMonth: String = "",
+    val isLoadingPassiveLogs: Boolean = false,
+    val deletingPassiveLogId: String? = null,
     val errorMessage: String? = null,
     val successMessage: String? = null
 )
@@ -68,7 +77,8 @@ class WealthViewModel : ViewModel() {
                     isLoading = false,
                     summary = summary ?: _uiState.value.summary,
                     section = section,
-                    items = items
+                    // Crash fix: keep LazyColumn keys unique.
+                    items = items.distinctBy { it.id.ifBlank { it.name + it.value } }
                 )
             }.onFailure { throwable ->
                 _uiState.value = _uiState.value.copy(
@@ -172,5 +182,119 @@ class WealthViewModel : ViewModel() {
 
     fun clearMessage() {
         _uiState.value = _uiState.value.copy(errorMessage = null, successMessage = null)
+    }
+
+    // Request 8: daily passive-income logs.
+
+    private var passiveLogsJob: Job? = null
+
+    fun loadPassiveLogs(userId: String, month: String) {
+        if (userId.isBlank() || month.isBlank()) return
+        passiveLogsJob?.cancel()
+        passiveLogsJob = viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingPassiveLogs = true, errorMessage = null)
+            runCatching { repository.listPassiveIncomeLogs(userId, month = month) }
+                .onSuccess { response ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingPassiveLogs = false,
+                        passiveLogs = if (response.success) response.data?.logs.orEmpty() else emptyList(),
+                        passiveMonth = month,
+                        errorMessage = if (response.success) null else response.error?.message
+                    )
+                }
+                .onFailure { throwable ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingPassiveLogs = false,
+                        errorMessage = throwable.message ?: "Unable to load passive income logs."
+                    )
+                }
+        }
+    }
+
+    fun savePassiveLog(
+        userId: String,
+        month: String,
+        logId: String = "",
+        incomeId: String = "",
+        sourceName: String = "",
+        amount: Double,
+        incomeDate: String,
+        incomeType: String = "",
+        notes: String = "",
+        entryKind: String = "actual",
+        linkTransaction: Boolean = false,
+        onSuccess: () -> Unit = {}
+    ) {
+        if (userId.isBlank()) {
+            _uiState.value = _uiState.value.copy(errorMessage = "Sign in first to log income.")
+            return
+        }
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSaving = true, errorMessage = null, successMessage = null)
+            val request = SavePassiveIncomeLogRequest(
+                logId = logId,
+                userId = userId,
+                incomeId = incomeId,
+                sourceName = sourceName.trim(),
+                amount = amount,
+                incomeDate = incomeDate,
+                incomeType = incomeType.trim(),
+                notes = notes.trim(),
+                entryKind = entryKind,
+                linkTransaction = linkTransaction,
+                requestId = UUID.randomUUID().toString()
+            )
+            runCatching { repository.savePassiveIncomeLog(request) }
+                .onSuccess { response ->
+                    if (!response.success || response.data == null) {
+                        _uiState.value = _uiState.value.copy(
+                            isSaving = false,
+                            errorMessage = response.error?.message ?: "Unable to save income log."
+                        )
+                        return@onSuccess
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        isSaving = false,
+                        successMessage = "Income log saved."
+                    )
+                    loadPassiveLogs(userId, month)
+                    onSuccess()
+                }
+                .onFailure { throwable ->
+                    _uiState.value = _uiState.value.copy(
+                        isSaving = false,
+                        errorMessage = throwable.message ?: "Unable to save income log."
+                    )
+                }
+        }
+    }
+
+    fun deletePassiveLog(userId: String, month: String, logId: String, onSuccess: () -> Unit = {}) {
+        if (userId.isBlank() || _uiState.value.deletingPassiveLogId != null) return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(deletingPassiveLogId = logId, errorMessage = null, successMessage = null)
+            runCatching { repository.deletePassiveIncomeLog(logId, userId) }
+                .onSuccess { response ->
+                    if (!response.success) {
+                        _uiState.value = _uiState.value.copy(
+                            deletingPassiveLogId = null,
+                            errorMessage = response.error?.message ?: "Unable to delete income log."
+                        )
+                        return@onSuccess
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        deletingPassiveLogId = null,
+                        successMessage = "Income log deleted."
+                    )
+                    loadPassiveLogs(userId, month)
+                    onSuccess()
+                }
+                .onFailure { throwable ->
+                    _uiState.value = _uiState.value.copy(
+                        deletingPassiveLogId = null,
+                        errorMessage = throwable.message ?: "Unable to delete income log."
+                    )
+                }
+        }
     }
 }

@@ -66,12 +66,33 @@ import com.example.householdapp.core.ui.formatTimestamp
 import java.time.Instant
 import java.time.ZoneOffset
 
-private const val WALLET_SOURCE_OPTIONS = "his,hers,joint"
-private const val TRANSFER_TARGET_OPTIONS = "joint,vacation,dream"
+// Request 11: transfer accounts mirror the backend contract
+// (TransfersService: source must be a wallet; destination a wallet or a
+// savings-goal bucket). Options are computed dynamically — never hardcoded
+// per-user — and the source is always excluded from destinations.
+private val TRANSFER_WALLETS = listOf("his", "hers", "joint")
+private val TRANSFER_GOALS = listOf("vacation", "dream")
 
 @Composable
 private fun currentUserId(): String =
     SessionManager.sessionState.collectAsState().value.user?.userId ?: ""
+
+// Request 11: default source = the current owner's wallet resolved from the
+// authenticated profile; joint when ownership is unknown.
+@Composable
+private fun ownerDefaultSource(): String =
+    when (SessionManager.sessionState.collectAsState().value.user?.householdSide?.lowercase()) {
+        "his" -> "his"
+        "hers" -> "hers"
+        else -> "joint"
+    }
+
+private fun walletBalanceOf(balances: com.example.householdapp.core.model.WalletBreakdown, wallet: String): Double =
+    when (wallet) {
+        "his" -> balances.his
+        "hers" -> balances.hers
+        else -> balances.joint
+    }
 
 @Composable
 private fun FinanceRefreshHeader(
@@ -537,8 +558,17 @@ fun SubscriptionsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val userId = currentUserId()
     var showAddDialog by remember { mutableStateOf(false) }
+    // Request 10: archived subscriptions are hidden by default but kept
+    // (history preserved, no future reminders generated for them).
+    var showArchived by remember { mutableStateOf(false) }
+    var pendingArchive by remember { mutableStateOf<SubscriptionInfo?>(null) }
 
     LaunchedEffect(userId) { if (userId.isNotBlank()) viewModel.loadSubscriptions(userId) }
+
+    val visibleSubscriptions = remember(uiState.subscriptions, showArchived) {
+        if (showArchived) uiState.subscriptions else uiState.subscriptions.filter { it.isActive }
+    }
+    val archivedCount = uiState.subscriptions.count { !it.isActive }
 
     Column(modifier = Modifier.fillMaxSize()) {
         FinanceRefreshHeader(
@@ -568,7 +598,16 @@ fun SubscriptionsScreen(
                             Text("Add subscription")
                         }
                     }
-                    if (uiState.subscriptions.isEmpty()) {
+                    if (archivedCount > 0) {
+                        item {
+                            FilterChip(
+                                selected = showArchived,
+                                onClick = { showArchived = !showArchived },
+                                label = { Text("Show archived ($archivedCount)") }
+                            )
+                        }
+                    }
+                    if (visibleSubscriptions.isEmpty()) {
                         item {
                             EmptyState(
                                 icon = Icons.Filled.DateRange,
@@ -578,9 +617,14 @@ fun SubscriptionsScreen(
                             )
                         }
                     } else {
-                        items(uiState.subscriptions, key = { it.subscriptionId }) { subscription ->
+                        items(visibleSubscriptions, key = { it.subscriptionId }) { subscription ->
                             SubscriptionCard(subscription, uiState.isSubmitting) { isActive ->
-                                viewModel.toggleSubscription(userId, subscription.subscriptionId, isActive)
+                                if (!isActive) {
+                                    // Request 10: archiving asks for confirmation.
+                                    pendingArchive = subscription
+                                } else {
+                                    viewModel.toggleSubscription(userId, subscription.subscriptionId, true)
+                                }
                             }
                         }
                     }
@@ -597,6 +641,35 @@ fun SubscriptionsScreen(
                 if (userId.isNotBlank()) {
                     viewModel.createSubscription(userId, serviceName, nextRenewalDate, billingInterval, terminationRule) { showAddDialog = false }
                 }
+            }
+        )
+    }
+
+    // Request 10: archive confirmation — history is preserved, future
+    // reminders stop because inactive rows are excluded server-side.
+    pendingArchive?.let { target ->
+        AlertDialog(
+            onDismissRequest = { if (!uiState.isSubmitting) pendingArchive = null },
+            title = { Text("Archive subscription?") },
+            text = {
+                Text(
+                    "${target.serviceName} will be archived. Past records stay in history, but no future payments or reminders will be generated for it."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.toggleSubscription(userId, target.subscriptionId, false)
+                        pendingArchive = null
+                    },
+                    enabled = !uiState.isSubmitting
+                ) { Text("Archive") }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { pendingArchive = null },
+                    enabled = !uiState.isSubmitting
+                ) { Text("Keep") }
             }
         )
     }
@@ -625,6 +698,13 @@ private fun SubscriptionCard(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
+                if (!subscription.isActive) {
+                    Text(
+                        text = "Archived — no future reminders",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Text(
                     text = "Renews ${subscription.nextRenewalDate}",
                     style = MaterialTheme.typography.bodySmall,
@@ -741,18 +821,43 @@ fun TransfersScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val userId = currentUserId()
-    var sourceAccount by remember { mutableStateOf("joint") }
+    val ownerSource = ownerDefaultSource()
+    var sourceAccount by remember(ownerSource) { mutableStateOf(ownerSource) }
     var destinationTarget by remember { mutableStateOf("vacation") }
     var amountText by remember { mutableStateOf("") }
 
-    LaunchedEffect(userId) { if (userId.isNotBlank()) viewModel.loadTransfers(userId) }
+    // Request 11: destinations = all eligible targets except the source.
+    val destinationOptions = remember(sourceAccount) {
+        (TRANSFER_WALLETS + TRANSFER_GOALS).filter { it != sourceAccount }
+    }
+    if (destinationTarget == sourceAccount || destinationTarget !in destinationOptions) {
+        destinationTarget = destinationOptions.firstOrNull() ?: "vacation"
+    }
+
+    val amount = amountText.toDoubleOrNull() ?: 0.0
+    val sourceBalance = walletBalanceOf(uiState.walletBalances, sourceAccount)
+    val overBalance = amount > 0 && amount > sourceBalance
+    val sameAccount = sourceAccount == destinationTarget
+    val canTransfer = !uiState.isSubmitting && amount > 0 && !sameAccount && !overBalance
+
+    LaunchedEffect(userId) {
+        if (userId.isNotBlank()) {
+            viewModel.loadTransfers(userId)
+            viewModel.loadWalletBalances()
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         FinanceRefreshHeader(
             title = "Transfers",
             subtitle = "Move money between accounts",
             isLoading = uiState.isLoading,
-            onRefresh = { if (userId.isNotBlank()) viewModel.loadTransfers(userId) }
+            onRefresh = {
+                if (userId.isNotBlank()) {
+                    viewModel.loadTransfers(userId)
+                    viewModel.loadWalletBalances()
+                }
+            }
         )
         FinanceStateMessages(uiState.errorMessage, uiState.successMessage)
 
@@ -783,7 +888,7 @@ fun TransfersScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                WALLET_SOURCE_OPTIONS.split(",").forEach { option ->
+                                TRANSFER_WALLETS.forEach { option ->
                                     FilterChip(
                                         selected = sourceAccount == option,
                                         onClick = { sourceAccount = option },
@@ -791,6 +896,11 @@ fun TransfersScreen(
                                     )
                                 }
                             }
+                            Text(
+                                text = "Available in ${sourceAccount.replaceFirstChar { it.uppercase() }}: ${formatMoney(sourceBalance)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text("Destination target", style = MaterialTheme.typography.labelMedium)
@@ -798,7 +908,7 @@ fun TransfersScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                TRANSFER_TARGET_OPTIONS.split(",").forEach { option ->
+                                destinationOptions.forEach { option ->
                                     FilterChip(
                                         selected = destinationTarget == option,
                                         onClick = { destinationTarget = option },
@@ -815,10 +925,22 @@ fun TransfersScreen(
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             modifier = Modifier.fillMaxWidth()
                         )
+                        // Request 11: both accounts shown clearly before confirmation.
+                        Text(
+                            text = "Transfer ${formatMoney(amount)} from ${sourceAccount.replaceFirstChar { it.uppercase() }} to ${destinationTarget.replaceFirstChar { it.uppercase() }}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        if (overBalance) {
+                            Text(
+                                text = "Amount exceeds the available ${formatMoney(sourceBalance)} in ${sourceAccount.replaceFirstChar { it.uppercase() }}.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
                         Button(
                             onClick = {
-                                val amount = amountText.toDoubleOrNull() ?: 0.0
-                                if (userId.isNotBlank()) {
+                                if (userId.isNotBlank() && canTransfer) {
                                     viewModel.executeTransfer(
                                         userId = userId,
                                         sourceAccount = sourceAccount,
@@ -829,7 +951,7 @@ fun TransfersScreen(
                                     )
                                 }
                             },
-                            enabled = !uiState.isSubmitting && (amountText.toDoubleOrNull() ?: 0.0) > 0,
+                            enabled = canTransfer,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Filled.SwapHoriz, contentDescription = null)

@@ -230,7 +230,9 @@ function getIncomeThisMonth(householdId) {
   getSheetData(SHEET_NAMES.MONEY_TRANSACTIONS).forEach(function(t) {
     if (!rowMatchesHousehold(t, householdId)) return;
     if (normalizeString(t.created_at).substring(0, 7) !== monthPrefix) return;
-    if (t.type === 'income') {
+    // Request 12: linked wallet-to-wallet transfer rows are money movement,
+    // not new income — exclude them so monthly totals never double-count.
+    if (t.type === 'income' && normalizeString(t.category).toLowerCase() !== 'transfer') {
       income += Number(t.amount) || 0;
     }
   });
@@ -243,7 +245,9 @@ function getExpensesThisMonth(householdId) {
   getSheetData(SHEET_NAMES.MONEY_TRANSACTIONS).forEach(function(t) {
     if (!rowMatchesHousehold(t, householdId)) return;
     if (normalizeString(t.created_at).substring(0, 7) !== monthPrefix) return;
-    if (t.type === 'expense') {
+    // Request 12: linked wallet-to-wallet transfer rows are money movement,
+    // not spending — exclude them so monthly totals never double-count.
+    if (t.type === 'expense' && normalizeString(t.category).toLowerCase() !== 'transfer') {
       expenses += Number(t.amount) || 0;
     }
   });

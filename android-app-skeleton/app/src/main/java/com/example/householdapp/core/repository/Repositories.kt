@@ -19,12 +19,15 @@ import com.example.householdapp.core.network.CreateSubscriptionRequest
 import com.example.householdapp.core.network.CreateTaskRequest
 import com.example.householdapp.core.network.DeleteReferenceEntryRequest
 import com.example.householdapp.core.network.DeleteTaskRequest
+import com.example.householdapp.core.network.DeleteTransactionRequest
+import com.example.householdapp.core.network.DeletePassiveIncomeLogRequest
 import com.example.householdapp.core.network.DeleteWealthItemRequest
 import com.example.householdapp.core.network.DeviceBootstrapRequest
 import com.example.householdapp.core.network.ExecuteTransferRequest
 import com.example.householdapp.core.network.LogWorkoutRequest
 import com.example.householdapp.core.network.RedeemRewardRequest
 import com.example.householdapp.core.network.SaveFinancialFreedomRequest
+import com.example.householdapp.core.network.SavePassiveIncomeLogRequest
 import com.example.householdapp.core.network.SaveWealthItemRequest
 import com.example.householdapp.core.network.SetFinanceCurrencyRequest
 import com.example.householdapp.core.network.SetFinanceGoalsRequest
@@ -164,6 +167,17 @@ class FinanceRepository {
                 category = category,
                 amount = amount,
                 wallet = wallet,
+                userId = userId,
+                requestId = UUID.randomUUID().toString()
+            )
+        )
+
+    // Request 5: the backend deletes the row (plus any linked transfer
+    // rows) and returns the recalculated summary.
+    suspend fun deleteTransaction(transactionId: String, userId: String) =
+        api.deleteTransaction(
+            request = DeleteTransactionRequest(
+                transactionId = transactionId,
                 userId = userId,
                 requestId = UUID.randomUUID().toString()
             )
@@ -311,6 +325,22 @@ class WealthRepository {
 
     suspend fun saveFreedom(request: SaveFinancialFreedomRequest) =
         api.saveFinancialFreedom(request = request)
+
+    // Request 8: daily passive-income logs.
+    suspend fun listPassiveIncomeLogs(userId: String, month: String = "", incomeId: String = "", kind: String = "") =
+        api.listPassiveIncomeLogs(userId = userId, month = month, incomeId = incomeId, kind = kind)
+
+    suspend fun savePassiveIncomeLog(request: SavePassiveIncomeLogRequest) =
+        api.savePassiveIncomeLog(request = request)
+
+    suspend fun deletePassiveIncomeLog(logId: String, userId: String) =
+        api.deletePassiveIncomeLog(
+            request = DeletePassiveIncomeLogRequest(
+                logId = logId,
+                userId = userId,
+                requestId = UUID.randomUUID().toString()
+            )
+        )
 }
 
 class ReferenceRepository {

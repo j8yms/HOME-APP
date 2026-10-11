@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -72,7 +73,9 @@ fun MoreScreen(
                         MoreItem("Ledger", "Transaction logs", Icons.Filled.ReceiptLong) { onNavigateTo(AppRoute.Ledger) },
                         MoreItem("Budgets", "Monthly limits", Icons.Filled.DateRange) { onNavigateTo(AppRoute.Budgets) },
                         MoreItem("Subscriptions", "Recurring services", Icons.Filled.EventNote) { onNavigateTo(AppRoute.Subscriptions) },
-                        MoreItem("Transfers", "Move money", Icons.Filled.SwapHoriz) { onNavigateTo(AppRoute.Transfers) }
+                        MoreItem("Transfers", "Move money", Icons.Filled.SwapHoriz) { onNavigateTo(AppRoute.Transfers) },
+                        // Stage 4: pending M-Pesa allocation inbox.
+                        MoreItem("Pending M-Pesa", "Review & allocate", Icons.Filled.Sms) { onNavigateTo(AppRoute.Mpesa) }
                     )
                 )
             }
@@ -88,7 +91,10 @@ fun MoreScreen(
                         MoreItem("Workouts", "Fitness tracking", Icons.Filled.FitnessCenter) { onNavigateTo(AppRoute.Workouts) },
                         MoreItem("Rewards", "Coins & rewards", Icons.Filled.CardGiftcard) { onNavigateTo(AppRoute.Rewards) },
                         MoreItem("Household Log", "Event logging", Icons.Filled.ListAlt) { onNavigateTo(AppRoute.HouseholdLog) },
-                        MoreItem("Library", "Directories & notes", Icons.Filled.Book) { onOpenReference("maintenance") }
+                        // Request 13: this opens the shared household
+                        // directories (maintenance/vault/health) — labelled
+                        // to match the screen title and content.
+                        MoreItem("Directories", "Maintenance, vault & health notes", Icons.Filled.Book) { onOpenReference("maintenance") }
                     )
                 )
             }

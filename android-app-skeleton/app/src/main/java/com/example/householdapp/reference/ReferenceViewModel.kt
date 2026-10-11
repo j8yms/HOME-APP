@@ -38,7 +38,8 @@ class ReferenceViewModel(
             runCatching { repository.listEntries(category) }
                 .onSuccess { response ->
                     val entries = if (response.success) {
-                        response.data?.entries.orEmpty()
+                        // Crash fix: keep LazyColumn keys unique.
+                        response.data?.entries.orEmpty().distinctBy { it.entryId }
                     } else {
                         emptyList()
                     }

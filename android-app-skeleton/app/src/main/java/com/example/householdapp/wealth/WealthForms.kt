@@ -9,15 +9,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import com.example.householdapp.core.network.FinancialFreedom
 import com.example.householdapp.core.network.SaveFinancialFreedomRequest
 import com.example.householdapp.core.network.WealthItem
+import java.time.Instant
+import java.time.ZoneOffset
 
 private val TRANSACTION_TYPES = listOf("contribution", "withdrawal", "return", "fee")
 
@@ -86,6 +95,53 @@ private fun FormTextField(
     )
 }
 
+// Request 9: shared date field — manual yyyy-MM-dd entry plus a native
+// date picker. Stored and displayed as yyyy-MM-dd (no timezone shifts).
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DatePickerField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String
+) {
+    var showPicker by remember { mutableStateOf(false) }
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(text = label) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+        trailingIcon = {
+            IconButton(onClick = { showPicker = true }) {
+                Icon(imageVector = Icons.Filled.EditCalendar, contentDescription = "Pick date")
+            }
+        }
+    )
+    if (showPicker) {
+        val pickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        pickerState.selectedDateMillis?.let { millis ->
+                            onValueChange(
+                                Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate().toString()
+                            )
+                        }
+                        showPicker = false
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showPicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = pickerState)
+        }
+    }
+}
+
 @Composable
 private fun ToggleRow(
     label: String,
@@ -113,6 +169,9 @@ fun WealthItemDialog(
 ) {
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var type by remember { mutableStateOf(initial?.type ?: "") }
+    // Request 6: explicit account currency (KES/USD); blank keeps prior
+    // behaviour and is treated as household currency, never converted.
+    var currency by remember { mutableStateOf(initial?.currency?.uppercase() ?: "") }
     var provider by remember { mutableStateOf(initial?.provider ?: "") }
     var reference by remember { mutableStateOf(initial?.reference ?: "") }
     var valueText by remember { mutableStateOf(numberText(initial?.value)) }
@@ -288,7 +347,7 @@ fun WealthItemDialog(
                             errorLabel = "Enter a positive amount",
                             keyboardType = KeyboardType.Decimal
                         )
-                        FormTextField(
+                        DatePickerField(
                             value = targetDate,
                             onValueChange = { targetDate = it },
                             label = "Target date (yyyy-MM-dd)"
@@ -334,13 +393,33 @@ fun WealthItemDialog(
                         FormTextField(
                             value = type,
                             onValueChange = { type = it },
-                            label = "Account type"
+                            label = "Account type (e.g. savings, MMF, SACCO, trading)"
                         )
                         FormTextField(
                             value = provider,
                             onValueChange = { provider = it },
                             label = "Provider"
                         )
+                        Text(text = "Currency", style = MaterialTheme.typography.labelMedium)
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf("KES", "USD").forEach { option ->
+                                FilterChip(
+                                    selected = currency == option,
+                                    onClick = { currency = if (currency == option) "" else option },
+                                    label = { Text(option) }
+                                )
+                            }
+                        }
+                        if (type.trim().lowercase() in setOf("trading", "trade", "forex", "fx")) {
+                            Text(
+                                text = "Trading accounts are kept in USD and excluded from net worth.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         FormTextField(
                             value = valueText,
                             onValueChange = { valueText = it },
@@ -374,7 +453,7 @@ fun WealthItemDialog(
                             label = "Price",
                             keyboardType = KeyboardType.Decimal
                         )
-                        FormTextField(
+                        DatePickerField(
                             value = date,
                             onValueChange = { date = it },
                             label = "Date (yyyy-MM-dd)"
@@ -435,7 +514,7 @@ fun WealthItemDialog(
                             errorLabel = "Enter a positive amount",
                             keyboardType = KeyboardType.Decimal
                         )
-                        FormTextField(
+                        DatePickerField(
                             value = date,
                             onValueChange = { date = it },
                             label = "Date (yyyy-MM-dd)"
@@ -520,6 +599,7 @@ fun WealthItemDialog(
                             section = section.key,
                             name = name.trim(),
                             type = type.trim(),
+                            currency = currency.trim().uppercase(),
                             provider = provider.trim(),
                             reference = reference.trim(),
                             value = parseNumber(valueText),
@@ -611,7 +691,7 @@ fun FreedomDialog(
                     label = "Monthly requirement",
                     keyboardType = KeyboardType.Decimal
                 )
-                FormTextField(
+                DatePickerField(
                     value = targetDateText,
                     onValueChange = { targetDateText = it },
                     label = "Target date (yyyy-MM-dd)"

@@ -214,12 +214,43 @@ interface HouseholdApiService {
         @Body request: SaveFinancialFreedomRequest
     ): ApiResponse<FinancialFreedom>
 
+    @GET
+    suspend fun listPassiveIncomeLogs(
+        @Url path: String = BuildConfig.APPS_SCRIPT_DEPLOYMENT_PATH,
+        @Query("route") route: String = "passive_income/logs",
+        @Query("userId") userId: String = "",
+        @Query("month") month: String = "",
+        @Query("incomeId") incomeId: String = "",
+        @Query("kind") kind: String = ""
+    ): ApiResponse<PassiveIncomeLogsResponse>
+
+    @POST
+    suspend fun savePassiveIncomeLog(
+        @Url path: String = BuildConfig.APPS_SCRIPT_DEPLOYMENT_PATH,
+        @Query("route") route: String = "passive_income/log",
+        @Body request: SavePassiveIncomeLogRequest
+    ): ApiResponse<SavePassiveIncomeLogResponse>
+
+    @POST
+    suspend fun deletePassiveIncomeLog(
+        @Url path: String = BuildConfig.APPS_SCRIPT_DEPLOYMENT_PATH,
+        @Query("route") route: String = "passive_income/log/delete",
+        @Body request: DeletePassiveIncomeLogRequest
+    ): ApiResponse<DeletePassiveIncomeLogResponse>
+
     @POST
     suspend fun addTransaction(
         @Url path: String = BuildConfig.APPS_SCRIPT_DEPLOYMENT_PATH,
         @Query("route") route: String = "finance/add_transaction",
         @Body request: AddTransactionRequest
     ): ApiResponse<AddTransactionResponse>
+
+    @POST
+    suspend fun deleteTransaction(
+        @Url path: String = BuildConfig.APPS_SCRIPT_DEPLOYMENT_PATH,
+        @Query("route") route: String = "finance/delete_transaction",
+        @Body request: DeleteTransactionRequest
+    ): ApiResponse<DeleteTransactionResponse>
 
     @POST
     suspend fun setFinanceGoals(
