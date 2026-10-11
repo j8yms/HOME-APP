@@ -18,6 +18,7 @@ import com.example.householdapp.finance.SubscriptionsScreen
 import com.example.householdapp.finance.TransfersScreen
 import com.example.householdapp.householdlog.HouseholdLogScreen
 import com.example.householdapp.more.MoreScreen
+import com.example.householdapp.mpesa.MpesaInboxScreen
 import com.example.householdapp.profile.ProfileScreen
 import com.example.householdapp.reference.ReferenceScreen
 import com.example.householdapp.rewards.RewardsScreen
@@ -40,6 +41,7 @@ sealed class AppRoute(val route: String, val label: String) {
     data object Subscriptions : AppRoute("subscriptions", "Subscriptions")
     data object Transfers : AppRoute("transfers", "Transfers")
     data object HouseholdLog : AppRoute("household_log", "Log")
+    data object Mpesa : AppRoute("mpesa", "M-Pesa")
     data object ActivityFeed : AppRoute("activity_feed", "Activity")
     data object Profile : AppRoute("profile", "Profile")
     data object Reference : AppRoute("reference/{category}", "Directories") {
@@ -86,6 +88,7 @@ fun AppNavGraph(
         composable(AppRoute.Subscriptions.route) { SubscriptionsScreen() }
         composable(AppRoute.Transfers.route) { TransfersScreen() }
         composable(AppRoute.HouseholdLog.route) { HouseholdLogScreen() }
+        composable(AppRoute.Mpesa.route) { MpesaInboxScreen() }
         composable(AppRoute.ActivityFeed.route) { ActivityFeedScreen() }
         composable(AppRoute.Profile.route) {
             ProfileScreen(
