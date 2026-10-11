@@ -5,13 +5,28 @@ function listTasks(payload) {
   var householdId = getUserHouseholdId(assignedToUserId) || '';
   var hasStatus = status !== '';
 
-  return findManyBy(SHEET_NAMES.TASKS, function(row) {
+  var mapped = findManyBy(SHEET_NAMES.TASKS, function(row) {
     var statusMatch = hasStatus ? row.status === status : row.status !== 'archived';
     var householdMatch = !householdId || row.household_id === householdId;
     var recurrenceMatch = recurrenceId ? row.recurrence_id === recurrenceId : true;
     var assigneeMatch = !assignedToUserId || row.assigned_to_user_id === assignedToUserId;
     return statusMatch && householdMatch && recurrenceMatch && assigneeMatch;
   }).map(mapTask);
+
+  // Crash fix: stale duplicate rows sharing one task_id collapse to the
+  // newest version so clients never receive duplicate keys. The rows
+  // themselves are left untouched (no data loss).
+  var byId = {};
+  mapped.forEach(function(task) {
+    var existing = byId[task.taskId];
+    if (!existing || task.version > existing.version ||
+        (task.version === existing.version && String(task.updatedAt) > String(existing.updatedAt))) {
+      byId[task.taskId] = task;
+    }
+  });
+  return mapped.filter(function(task) {
+    return byId[task.taskId] === task;
+  });
 }
 
 function deleteTask(payload) {
@@ -136,55 +151,161 @@ function completeTask(payload) {
     }
 
     if (task.status === 'completed') {
+      // Request 1: a daily task is independently completable each calendar
+      // day. Completing "yesterday's row" today rolls forward to today's
+      // open occurrence instead of erroring; a same-date repeat is rejected
+      // without duplicate rewards. History rows are never modified.
+      if (normalizeString(task.repeat_rule) === 'daily') {
+        return completeDailyRollForward(task, completedByUserId);
+      }
       throw new Error('TASK_ALREADY_COMPLETED');
     }
 
-    task.status = 'completed';
-    task.completed_at = nowIso();
-    task.completed_by_user_id = completedByUserId;
-    task.updated_at = nowIso();
-    task.version = toInt(task.version) + 1;
-    updateRowByIndex(SHEET_NAMES.TASKS, task.__rowIndex, task);
-
-    var xpReward = toInt(task.xp_reward, getConfigNumber('default_task_xp', 20));
-    var coinReward = toInt(task.coin_reward, getConfigNumber('default_task_coins', 5));
-
-    appendLedgerEntry({
-      userId: completedByUserId,
-      sourceType: 'task',
-      sourceId: taskId,
-      actionType: 'task_completion',
-      xpDelta: xpReward,
-      coinDelta: coinReward,
-      reason: 'Task completed'
-    });
-
-    var totals = updateUserTotals(completedByUserId, xpReward, coinReward);
-    var streak = toBoolean(task.streak_eligible)
-      ? applyQualifyingAction(completedByUserId, todayDateString(), 'task', taskId)
-      : {
-          currentStreak: toInt(getUserById(completedByUserId).current_streak),
-          longestStreak: toInt(getUserById(completedByUserId).longest_streak),
-          streakBonusXp: 0
-        };
-
-    var recurringTask = createNextOccurrence(task);
-
-    return {
-      task: mapTask(task),
-      recurringTask: recurringTask,
-      rewards: {
-        xpGained: xpReward + (streak.streakBonusXp || 0),
-        coinsGained: coinReward
-      },
-      user: Object.assign({}, mapUserSummary(getUserById(completedByUserId)), totals, {
-        currentStreak: streak.currentStreak,
-        longestStreak: streak.longestStreak
-      })
-    };
+    return applyTaskCompletion(task, completedByUserId);
   } finally {
     lock.releaseLock();
   }
+}
+
+// Marks one open task row completed, grants rewards once, and creates the
+// next occurrence for recurring tasks. Shared by the normal path and the
+// daily roll-forward path so behaviour stays identical.
+function applyTaskCompletion(task, completedByUserId) {
+  var taskId = task.task_id;
+
+  task.status = 'completed';
+  task.completed_at = nowIso();
+  task.completed_by_user_id = completedByUserId;
+  task.updated_at = nowIso();
+  task.version = toInt(task.version) + 1;
+  updateRowByIndex(SHEET_NAMES.TASKS, task.__rowIndex, task);
+
+  var xpReward = toInt(task.xp_reward, getConfigNumber('default_task_xp', 20));
+  var coinReward = toInt(task.coin_reward, getConfigNumber('default_task_coins', 5));
+
+  appendLedgerEntry({
+    userId: completedByUserId,
+    sourceType: 'task',
+    sourceId: taskId,
+    actionType: 'task_completion',
+    xpDelta: xpReward,
+    coinDelta: coinReward,
+    reason: 'Task completed'
+  });
+
+  var totals = updateUserTotals(completedByUserId, xpReward, coinReward);
+  var streak = toBoolean(task.streak_eligible)
+    ? applyQualifyingAction(completedByUserId, todayDateString(), 'task', taskId)
+    : {
+        currentStreak: toInt(getUserById(completedByUserId).current_streak),
+        longestStreak: toInt(getUserById(completedByUserId).longest_streak),
+        streakBonusXp: 0
+      };
+
+  var recurringTask = createNextOccurrence(task);
+
+  return {
+    task: mapTask(task),
+    recurringTask: recurringTask,
+    rewards: {
+      xpGained: xpReward + (streak.streakBonusXp || 0),
+      coinsGained: coinReward
+    },
+    user: Object.assign({}, mapUserSummary(getUserById(completedByUserId)), totals, {
+      currentStreak: streak.currentStreak,
+      longestStreak: streak.longestStreak
+    })
+  };
+}
+
+function alreadyCompletedTodayError() {
+  var error = new Error('This daily task is already completed for today.');
+  error.code = 'TASK_ALREADY_COMPLETED';
+  return error;
+}
+
+// Stable series identifier linking occurrences of one routine. Older rows
+// created before series linkage carry a blank recurrence_id, in which case
+// the original task id anchors the series.
+function seriesIdFor(task) {
+  return normalizeString(task.recurrence_id) || normalizeString(task.task_id);
+}
+
+function completionDateInHouseholdTz(task, householdId) {
+  var raw = normalizeString(task.completed_at);
+  if (!raw) return '';
+  var parsed = new Date(Date.parse(raw));
+  if (isNaN(parsed.getTime())) return '';
+  return Utilities.formatDate(parsed, getHouseholdTimezone(householdId), 'yyyy-MM-dd');
+}
+
+function findTodayDailyOccurrence(task, householdId, todayStr) {
+  var seriesId = seriesIdFor(task);
+  var title = normalizeString(task.title);
+  var assignee = normalizeString(task.assigned_to_user_id);
+  var candidates = findManyBy(SHEET_NAMES.TASKS, function(row) {
+    if (normalizeString(row.status) !== 'open') return false;
+    if (normalizeString(row.repeat_rule) !== 'daily') return false;
+    if (!rowMatchesHousehold(row, householdId)) return false;
+    if (normalizeString(row.due_date) !== todayStr) return false;
+    if (normalizeString(row.recurrence_id) === seriesId) return true;
+    // Legacy rows without series linkage: match by title + assignee.
+    return normalizeString(row.title) === title &&
+      normalizeString(row.assigned_to_user_id) === assignee;
+  });
+  return candidates[0] || null;
+}
+
+function createTodayOccurrence(task, householdId, todayStr) {
+  var seriesId = seriesIdFor(task);
+  var nextTask = {
+    task_id: generateId('t', SHEET_NAMES.TASKS),
+    title: task.title,
+    description: task.description || '',
+    category: task.category || '',
+    assigned_to_user_id: task.assigned_to_user_id || '',
+    assignee_label: normalizeAssigneeLabel(task.assignee_label, task.assigned_to_user_id),
+    created_by_user_id: task.created_by_user_id || '',
+    status: 'open',
+    priority: task.priority || 'medium',
+    due_date: todayStr,
+    repeat_rule: 'daily',
+    recurrence_id: seriesId,
+    household_id: householdId,
+    xp_reward: task.xp_reward,
+    coin_reward: task.coin_reward,
+    streak_eligible: String(toBoolean(task.streak_eligible)),
+    completed_at: '',
+    completed_by_user_id: '',
+    created_at: nowIso(),
+    updated_at: nowIso(),
+    version: 1
+  };
+
+  appendRow(SHEET_NAMES.TASKS, nextTask);
+  return nextTask;
+}
+
+// Daily roll-forward: completing an already-completed daily row completes
+// today's occurrence (found or created), so each calendar day is
+// independently completable and history rows stay untouched.
+function completeDailyRollForward(task, completedByUserId) {
+  var householdId = normalizeString(task.household_id) || getUserHouseholdId(completedByUserId);
+  var todayStr = todayDateStringByHousehold(householdId);
+
+  if (completionDateInHouseholdTz(task, householdId) === todayStr) {
+    throw alreadyCompletedTodayError();
+  }
+
+  var target = findTodayDailyOccurrence(task, householdId, todayStr);
+  if (!target) {
+    target = createTodayOccurrence(task, householdId, todayStr);
+  }
+  if (normalizeString(target.status) !== 'open') {
+    throw alreadyCompletedTodayError();
+  }
+
+  return applyTaskCompletion(target, completedByUserId);
 }
 
 function claimTask(payload) {
@@ -271,6 +392,8 @@ function createNextOccurrence(completedTask) {
     priority: completedTask.priority || 'medium',
     due_date: computeNextDueDate(repeatRule, completedTask.due_date),
     repeat_rule: repeatRule,
+    recurrence_id: seriesIdFor(completedTask),
+    household_id: normalizeString(completedTask.household_id),
     xp_reward: completedTask.xp_reward,
     coin_reward: completedTask.coin_reward,
     streak_eligible: String(toBoolean(completedTask.streak_eligible)),

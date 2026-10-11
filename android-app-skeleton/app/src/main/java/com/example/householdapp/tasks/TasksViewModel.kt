@@ -58,7 +58,11 @@ class TasksViewModel(
             runCatching { taskRepository.listTasks() }
                 .onSuccess { response ->
                     val tasks = if (response.success) {
-                        response.data?.tasks.orEmpty()
+                        // Crash fix: the backend can return the same task_id
+                        // twice (stale duplicate rows). Duplicate LazyColumn
+                        // keys kill the process, so dedupe keeping the newest
+                        // version and never trust list uniqueness.
+                        response.data?.tasks.orEmpty().dedupeTasks()
                     } else {
                         emptyList()
                     }
@@ -126,7 +130,7 @@ class TasksViewModel(
                         }
                         state.copy(
                             completingTaskId = null,
-                            tasks = (updatedTasks + listOfNotNull(data.recurringTask)).sortedWith(
+                            tasks = (updatedTasks + listOfNotNull(data.recurringTask)).dedupeTasks().sortedWith(
                                 compareBy<Task> { it.status == "completed" }
                                     .thenBy { it.dueDate }
                                     .thenBy { it.title }
@@ -299,7 +303,7 @@ class TasksViewModel(
                             isUpdatingTask = false,
                             tasks = state.tasks.map { existing ->
                                 if (existing.taskId == updatedTask.taskId) updatedTask else existing
-                            }.sortedWith(
+                            }.dedupeTasks().sortedWith(
                                 compareBy<Task> { it.status == "completed" }
                                     .thenBy { it.dueDate }
                                     .thenBy { it.title }
@@ -383,7 +387,7 @@ class TasksViewModel(
                     _uiState.update { state ->
                         state.copy(
                             isCreatingTask = false,
-                            tasks = (state.tasks + task).sortedWith(
+                            tasks = (state.tasks + task).dedupeTasks().sortedWith(
                                 compareBy<Task> { it.status == "completed" }
                                     .thenBy { it.dueDate }
                                     .thenBy { it.title }
@@ -412,4 +416,13 @@ class TasksViewModel(
     fun consumeLevelUp() {
         _uiState.update { it.copy(levelUpEvent = null) }
     }
+
+    // Crash fix: collapse duplicate task_id rows (stale backend duplicates),
+    // keeping the newest version so LazyColumn keys stay unique.
+    private fun List<Task>.dedupeTasks(): List<Task> =
+        groupBy { it.taskId }
+            .values
+            .mapNotNull { group ->
+                group.maxWithOrNull(compareBy<Task> { it.version }.thenBy { it.updatedAt })
+            }
 }
